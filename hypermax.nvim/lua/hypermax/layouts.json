@@ -1,0 +1,271 @@
+{
+  "version": 1,
+  "defaults": {
+    "directories": [
+      "src",
+      "tests",
+      "docs"
+    ],
+    "files": {
+      "README.md": "# {{PROJECT_NAME}}\n\n## Overview\n\nDescribe your project here.\n\n## Requirements\n\nInstall the required compiler, interpreter, or build tools.\n\n## Build\n\n{{BUILD_COMMAND}}\n\n## Run\n\n{{RUN_COMMAND}}\n\n## Test\n\n{{TEST_COMMAND}}\n\n## Clean\n\n{{CLEAN_COMMAND}}\n",
+      ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+      "docs/DESIGN.md": "# Design\n\nDocument the architecture and important decisions here.\n",
+      "tests/README.md": "# Tests\n\nDocument the test strategy and how to run tests.\n"
+    }
+  },
+  "credits": {
+    "path": "CREDITS.md",
+    "content": "# Credits\n\nGenerated with HyperMax.nvim.\n\n## Project creator\n\nAdd your name here.\n\n## Dependencies\n\nList third-party libraries, authors, and licenses here.\n\n## Tools\n\nList compilers, interpreters, and development tools used.\n\n## License\n\nSpecify your project license here.\n"
+  },
+  "languages": {
+    "ada": {},
+    "assembly": {},
+    "awk": {},
+    "apex": {},
+    "actionscript": {},
+    "bash": {},
+    "basic": {},
+    "bc": {},
+    "blitzBasic": {},
+    "boo": {},
+    "c": {
+      "build": "cc -std=c11 -Wall -Wextra -Wpedantic src/main.c -o build/app",
+      "run": "./build/app",
+      "test": "make test",
+      "clean": "rm -rf build"
+    },
+    "cpp": {
+      "build": "c++ -std=c++17 -Wall -Wextra -Wpedantic src/main.cpp -o build/app",
+      "run": "./build/app",
+      "test": "make test",
+      "clean": "rm -rf build"
+    },
+    "csharp": {},
+    "clojure": {},
+    "cobol": {},
+    "crystal": {},
+    "cuda": {},
+    "coffeescript": {},
+    "commonLisp": {},
+    "d": {},
+    "dart": {},
+    "delphi": {},
+    "dylan": {},
+    "eiffel": {},
+    "elixir": {},
+    "elm": {},
+    "erlang": {},
+    "erlangHeader": {},
+    "factor": {},
+    "fennel": {},
+    "forth": {},
+    "fortran": {},
+    "fsharp": {},
+    "gleam": {},
+    "glsl": {},
+    "go": {
+      "build": "go build -o build/app ./src",
+      "run": "go run ./src",
+      "test": "go test ./...",
+      "clean": "rm -rf build"
+    },
+    "groovy": {},
+    "gml": {},
+    "hack": {},
+    "haskell": {},
+    "haxe": {},
+    "hlsl": {},
+    "hy": {},
+    "icon": {},
+    "idris": {},
+    "inform": {},
+    "io": {},
+    "janet": {},
+    "java": {},
+    "javaScript": {
+      "build": "node --check src/main.js",
+      "run": "node src/main.js",
+      "test": "node --test",
+      "clean": "rm -rf build dist"
+    },
+    "julia": {},
+    "j": {},
+    "k": {},
+    "kotlin": {},
+    "koka": {},
+    "lean": {},
+    "less": {},
+    "lisp": {},
+    "logo": {},
+    "lua": {
+      "build": "luac -p src/main.lua",
+      "run": "lua src/main.lua",
+      "test": "lua tests/test_main.lua",
+      "clean": "rm -rf build"
+    },
+    "maple": {},
+    "matlab": {},
+    "mercury": {},
+    "mojo": {},
+    "move": {},
+    "neon": {},
+    "nesC": {},
+    "nim": {},
+    "nix": {},
+    "oberon": {},
+    "objectiveC": {},
+    "objectiveCpp": {},
+    "ocaml": {},
+    "odin": {},
+    "pascal": {},
+    "perl": {},
+    "php": {},
+    "pony": {},
+    "processing": {},
+    "prolog": {},
+    "purescript": {},
+    "python": {
+      "build": "python3 -m compileall -q src",
+      "run": "python3 src/main.py",
+      "test": "python3 -m unittest discover -s tests",
+      "clean": "rm -rf build dist __pycache__ src/__pycache__ tests/__pycache__"
+    },
+    "qsharp": {},
+    "qml": {},
+    "quakeC": {},
+    "r": {},
+    "racket": {},
+    "rexx": {},
+    "roc": {},
+    "ruby": {},
+    "rust": {
+      "build": "cargo build",
+      "run": "cargo run",
+      "test": "cargo test",
+      "clean": "cargo clean"
+    },
+    "scala": {},
+    "scheme": {},
+    "smalltalk": {},
+    "solidity": {},
+    "sql": {},
+    "squirrel": {},
+    "swift": {},
+    "tcl": {},
+    "terra": {},
+    "typescript": {},
+    "typst": {},
+    "unison": {},
+    "ur": {},
+    "vala": {},
+    "v": {},
+    "verilog": {},
+    "vhdl": {},
+    "vimScript": {},
+    "visualBasic": {},
+    "wren": {},
+    "wolfram": {},
+    "x10": {},
+    "yorick": {},
+    "zig": {},
+    "zsh": {}
+  },
+  "layouts": {
+    "cpp_engine": {
+      "name": "C++ Engine",
+      "description": "C++ engine with source, headers, assets, tests, and CMake",
+      "languages": [
+        "cpp"
+      ],
+      "directories": [
+        "src",
+        "include",
+        "assets",
+        "tests"
+      ],
+      "entry": "src/main.cpp",
+      "files": {
+        "src/main.cpp": "#include <iostream>\n\nint main() {\n    std::cout << \"Hello, World!\\n\";\n    return 0;\n}\n",
+        "include/.gitkeep": "",
+        "assets/.gitkeep": "",
+        "tests/.gitkeep": "",
+        "CMakeLists.txt": "cmake_minimum_required(VERSION 3.20)\nproject(HyperMaxEngine LANGUAGES CXX)\n\nset(CMAKE_CXX_STANDARD 17)\nset(CMAKE_CXX_STANDARD_REQUIRED ON)\nset(CMAKE_CXX_EXTENSIONS OFF)\n\nadd_executable(app src/main.cpp)\ntarget_include_directories(app PRIVATE include)\n",
+        "Makefile": "BUILD = build\n\n.PHONY: all configure build run clean\n\nall: build\n\nconfigure:\n\tcmake -S . -B $(BUILD)\n\nbuild: configure\n\tcmake --build $(BUILD)\n\nrun: build\n\t./$(BUILD)/app\n\nclean:\n\trm -rf $(BUILD)\n"
+      }
+    },
+    "python_app": {
+      "name": "Python Application",
+      "description": "Python application with tests and project metadata",
+      "languages": [
+        "python"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs"
+      ],
+      "entry": "src/main.py",
+      "files": {
+        "src/main.py": "def main():\n    print(\"Hello, World!\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
+        "tests/test_main.py": "import unittest\n\n\nclass TestMain(unittest.TestCase):\n    def test_example(self):\n        self.assertEqual(2 + 2, 4)\n\n\nif __name__ == \"__main__\":\n    unittest.main()\n",
+        "pyproject.toml": "[project]\nname = \"hypermax-python-app\"\nversion = \"0.1.0\"\nrequires-python = \">=3.10\"\ndependencies = []\n",
+        "Makefile": "PYTHON = python3\n\n.PHONY: all build run test clean\n\nall: build\n\nbuild:\n\t$(PYTHON) -m compileall -q src\n\nrun:\n\t$(PYTHON) src/main.py\n\ntest:\n\t$(PYTHON) -m unittest discover -s tests\n\nclean:\n\trm -rf build dist __pycache__ src/__pycache__ tests/__pycache__\n"
+      }
+    },
+    "c_application": {
+      "name": "C Application",
+      "description": "C application using Make and CMake",
+      "languages": [
+        "c"
+      ],
+      "directories": [
+        "src",
+        "include",
+        "tests"
+      ],
+      "entry": "src/main.c",
+      "files": {
+        "src/main.c": "#include <stdio.h>\n\nint main(void) {\n    puts(\"Hello, World!\");\n    return 0;\n}\n",
+        "include/.gitkeep": "",
+        "tests/.gitkeep": "",
+        "CMakeLists.txt": "cmake_minimum_required(VERSION 3.16)\nproject(HyperMaxApp LANGUAGES C)\n\nset(CMAKE_C_STANDARD 11)\nset(CMAKE_C_STANDARD_REQUIRED ON)\n\nadd_executable(app src/main.c)\ntarget_include_directories(app PRIVATE include)\n",
+        "Makefile": "CC = cc\nCFLAGS = -std=c11 -Wall -Wextra -Wpedantic -Iinclude\nBUILD = build\nTARGET = $(BUILD)/app\n\n.PHONY: all build run test clean\n\nall: build\n\nbuild:\n\tmkdir -p $(BUILD)\n\t$(CC) $(CFLAGS) src/main.c -o $(TARGET)\n\nrun: build\n\t./$(TARGET)\n\ntest:\n\t$(CC) $(CFLAGS) -fsyntax-only src/main.c\n\nclean:\n\trm -rf $(BUILD)\n"
+      }
+    },
+    "javascript_app": {
+      "name": "JavaScript Application",
+      "description": "Node.js application with built-in test support",
+      "languages": [
+        "javaScript"
+      ],
+      "directories": [
+        "src",
+        "tests"
+      ],
+      "entry": "src/main.js",
+      "files": {
+        "src/main.js": "function main() {\n    console.log(\"Hello, World!\");\n}\n\nmain();\n",
+        "tests/main.test.js": "const test = require('node:test');\nconst assert = require('node:assert/strict');\n\ntest('basic arithmetic works', () => {\n    assert.equal(2 + 2, 4);\n});\n",
+        "package.json": "{\n  \"name\": \"hypermax-javascript-app\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"scripts\": {\n    \"start\": \"node src/main.js\",\n    \"test\": \"node --test\"\n  }\n",
+        "Makefile": "NODE = node\n\n.PHONY: all build run test clean\n\nall: build\n\nbuild:\n\t$(NODE) --check src/main.js\n\nrun:\n\t$(NODE) src/main.js\n\ntest:\n\t$(NODE) --test\n\nclean:\n\trm -rf build dist coverage\n"
+      }
+    },
+    "rust_app": {
+      "name": "Rust Application",
+      "description": "Rust application managed by Cargo",
+      "languages": [
+        "rust"
+      ],
+      "directories": [
+        "src",
+        "tests"
+      ],
+      "entry": "src/main.rs",
+      "files": {
+        "src/main.rs": "fn main() {\n    println!(\"Hello, World!\");\n}\n",
+        "Cargo.toml": "[package]\nname = \"hypermax-rust-app\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n",
+        "Makefile": "CARGO = cargo\n\n.PHONY: all build run test clean\n\nall: build\n\nbuild:\n\t$(CARGO) build\n\nrun:\n\t$(CARGO) run\n\ntest:\n\t$(CARGO) test\n\nclean:\n\t$(CARGO) clean\n"
+      }
+    }
+  }
+}
