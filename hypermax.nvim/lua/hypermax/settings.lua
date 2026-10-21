@@ -15,6 +15,7 @@ local Boolean_Settings = {
 	create_default_directories = "Generate default directories",
 	remember_last_language = "Remember last language",
 	remember_last_manager = "Remember last manager",
+	remember_last_project = "Remember last project",
 }
 
 local function Notify(message)

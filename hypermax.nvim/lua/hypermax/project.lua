@@ -862,6 +862,11 @@ local function Create_Project(options, language_id, manager_id, root, project_na
 
 	Notify("Created project: " .. root)
 
+	if options.remember_last_project ~= false then
+		Config.options.last_project = root
+		Config.save()
+	end
+
 	Open_Project(root, entry, options)
 end
 
@@ -1144,6 +1149,71 @@ function Project.Save_Layout()
 				end)
 			end)
 		end)
+	end)
+end
+
+
+-- =========================================================
+-- PROJECT SHORTCUTS
+-- =========================================================
+
+function Project.Open_Last()
+	local root = Config.get("last_project")
+
+	if type(root) ~= "string" or root == "" or not Is_Directory(root) then
+		Notify("No previous HyperMax project was found.", vim.log.levels.WARN)
+		return
+	end
+
+	vim.cmd("tcd " .. vim.fn.fnameescape(root))
+	Notify("Opened last project: " .. root)
+end
+
+function Project.List()
+	local root = vim.fn.expand(Config.get("project_dir") or "~/Projects")
+	if not Is_Directory(root) then
+		Notify("Project directory does not exist: " .. root, vim.log.levels.WARN)
+		return
+	end
+
+	local entries = uv.fs_scandir(root)
+	local projects = {}
+	if entries then
+		while true do
+			local name, kind = uv.fs_scandir_next(entries)
+			if not name then break end
+			if kind == "directory" then
+				projects[#projects + 1] = { name = name, path = Join_Path(root, name) }
+			end
+		end
+	end
+	table.sort(projects, function(a, b) return a.name:lower() < b.name:lower() end)
+
+	Select_Item(projects, "Choose project to open", function(item)
+		return item.name .. "  —  " .. item.path
+	end, function(choice)
+		if not choice then return end
+		Config.options.last_project = choice.path
+		Config.save()
+		vim.cmd("tcd " .. vim.fn.fnameescape(choice.path))
+		Notify("Opened project: " .. choice.path)
+	end)
+end
+
+function Project.Load_Layout()
+	local ids = Layouts.Get_IDs()
+	if #ids == 0 then
+		Notify("No layouts are available.", vim.log.levels.WARN)
+		return
+	end
+
+	Select_Item(ids, "Choose layout", function(id)
+		local layout = Layouts.Get(id)
+		return (layout and layout.name or id) .. " (" .. id .. ")"
+	end, function(id)
+		if not id then return end
+		local options = vim.tbl_deep_extend("force", {}, Config.options or {}, { default_layout = id })
+		Project.Create(options)
 	end)
 end
 

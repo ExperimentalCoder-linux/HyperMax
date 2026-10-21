@@ -26,6 +26,7 @@ Config.defaults = {
 	create_default_directories = true,
 	remember_last_language = true,
 	remember_last_manager = true,
+	remember_last_project = true,
 }
 
 Config.options = {}

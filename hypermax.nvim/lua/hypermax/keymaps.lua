@@ -1,4 +1,3 @@
-local Keymaps = require("hypermax.keymaps")
 local Settings = require("hypermax.settings")
 local Layouts = require("hypermax.layouts")
 local Config = require("hypermax.config")

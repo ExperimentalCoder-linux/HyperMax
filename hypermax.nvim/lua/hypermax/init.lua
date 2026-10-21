@@ -5,6 +5,7 @@ local Project = require("hypermax.project")
 local Settings = require("hypermax.settings")
 
 local HyperMax = {}
+local Is_Setup = false
 
 HyperMax.version = "0.2.0"
 
@@ -46,9 +47,16 @@ local function Register_Commands()
 end
 
 function HyperMax.setup(options)
-	Config.setup(options)
-	Register_Commands()
-	Keymaps.Setup(Project, Settings, Layouts)
+	-- Do not reload persisted/default settings when the runtime loader calls
+	-- setup() after the user's init.lua has already configured HyperMax.
+	if not Is_Setup then
+		Config.setup(options)
+		Register_Commands()
+		Keymaps.Setup(Project, Settings, Layouts)
+		Is_Setup = true
+	elseif options ~= nil then
+		Config.setup(options)
+	end
 	return HyperMax
 end
 function HyperMax.get_config()
