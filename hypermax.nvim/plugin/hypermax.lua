@@ -1,8 +1,16 @@
--- Standard Neovim runtime entry point. Calling setup() again is safe and
--- allows a user configuration to override defaults before plugin loading.
-if vim.g.loaded_hypermax then
-	return
-end
-vim.g.loaded_hypermax = true
+return {
+	{
+		dir = vim.fn.expand("~/Git/HyperMax/hypermax.nvim"),
+		name = "hypermax.nvim",
+		lazy = false,
 
-require("hypermax").setup()
+		config = function()
+			require("hypermax").setup({
+				project_dir = "~/Code",
+				create_missing_dir = true,
+				open_after_create = false,
+				default_language = "c",
+			})
+		end,
+	},
+}

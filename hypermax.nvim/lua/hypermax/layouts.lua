@@ -73,7 +73,7 @@ local function Write_JSON(path, data)
 		return false, err
 	end
 
-	local write_ok, write_err = file:write(encoded, "\n")
+	local write_ok, write_err = file:write(vim.json.format and vim.json.format(encoded) or encoded, "\n")
 
 	local close_ok, close_err = file:close()
 

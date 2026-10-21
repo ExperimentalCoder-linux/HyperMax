@@ -8,6 +8,7 @@ Config.defaults = {
 	default_language = "cpp",
 	default_manager = "native",
 	default_layout = "",
+	last_project_path = "",
 
 	favourite_languages = {
 		"cpp",
@@ -17,6 +18,7 @@ Config.defaults = {
 		"rust",
 	},
 
+	remember_last_project = true,
 	show_progress = true,
 	show_command_output = true,
 	confirm_before_create = true,
@@ -26,7 +28,6 @@ Config.defaults = {
 	create_default_directories = true,
 	remember_last_language = true,
 	remember_last_manager = true,
-	remember_last_project = true,
 }
 
 Config.options = {}

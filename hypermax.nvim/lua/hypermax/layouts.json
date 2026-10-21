@@ -15,7 +15,7 @@
   },
   "credits": {
     "path": "CREDITS.md",
-    "content": "# Credits\n\nGenerated with HyperMax.nvim.\n\n## Project creator\n\nCT_Vim\nBayden Boesak\n\n## Dependencies\n\nList third-party libraries, authors, and licenses here.\n\n## Tools\n\nList compilers, interpreters, and development tools used.\n\n## License\n\nMIT License\n"
+    "content": "# Credits\n\nGenerated with HyperMax.nvim.\n\n## Project creator\n\nAdd your name here.\n\n## Dependencies\n\nList third-party libraries, authors, and licenses here.\n\n## Tools\n\nList compilers, interpreters, and development tools used.\n\n## License\n\nSpecify your project license here.\n"
   },
   "languages": {
     "ada": {},

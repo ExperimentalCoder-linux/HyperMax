@@ -832,6 +832,11 @@ end
 local function Create_Project(options, language_id, manager_id, root, project_name, layout_id)
 	local language = Languages.Get(language_id)
 
+	if options.remember_last_project ~= false then
+		Config.options.last_project_path = root
+		Config.save()
+	end
+
 	if not language then
 		Notify("Unknown language: " .. language_id, vim.log.levels.ERROR)
 		return
@@ -861,11 +866,6 @@ local function Create_Project(options, language_id, manager_id, root, project_na
 	end
 
 	Notify("Created project: " .. root)
-
-	if options.remember_last_project ~= false then
-		Config.options.last_project = root
-		Config.save()
-	end
 
 	Open_Project(root, entry, options)
 end
@@ -1039,6 +1039,109 @@ function Project.Create(user_options)
 end
 
 -- =========================================================
+-- LIST EXISTING PROJECTS
+-- =========================================================
+
+function Project.List()
+	local options = Config.options or {}
+	local root = vim.fn.expand(options.project_dir or "~/Projects")
+	local entries = uv.fs_scandir(root)
+
+	if not entries then
+		Notify("Project directory does not exist: " .. root, vim.log.levels.WARN)
+		return
+	end
+
+	local projects = {}
+
+	while true do
+		local name, kind = uv.fs_scandir_next(entries)
+
+		if not name then
+			break
+		end
+
+		if kind == "directory" and name:sub(1, 1) ~= "." then
+			local path = Join_Path(root, name)
+
+			projects[#projects + 1] = {
+				name = name,
+				path = path,
+			}
+		end
+	end
+
+	table.sort(projects, function(a, b)
+		return a.name:lower() < b.name:lower()
+	end)
+
+	Select_Item(projects, "Choose project", function(project)
+		return project.name
+	end, function(project)
+		if not project then
+			return
+		end
+
+		vim.cmd("tcd " .. vim.fn.fnameescape(project.path))
+		Notify("Opened project: " .. project.path)
+	end)
+end
+
+-- =========================================================
+-- OPEN LAST PROJECT
+-- =========================================================
+
+function Project.Open_Last()
+	local options = Config.options or {}
+	local path = options.last_project_path
+
+	if type(path) ~= "string" or path == "" then
+		Notify("No last project has been saved yet.", vim.log.levels.WARN)
+		return
+	end
+
+	path = vim.fn.expand(path)
+
+	if not Is_Directory(path) then
+		Notify("Last project directory no longer exists: " .. path, vim.log.levels.ERROR)
+		return
+	end
+
+	vim.cmd("tcd " .. vim.fn.fnameescape(path))
+	Notify("Opened project: " .. path)
+end
+
+-- =========================================================
+-- LOAD A LAYOUT INTO A NEW PROJECT
+-- =========================================================
+
+function Project.Load_Layout()
+	local ids = Layouts.Get_IDs()
+	local choices = {}
+
+	for _, id in ipairs(ids) do
+		local layout = Layouts.Get(id)
+
+		if layout then
+			choices[#choices + 1] = layout
+		end
+	end
+
+	Select_Item(choices, "Choose layout", function(layout)
+		return (layout.name or layout.id)
+			.. (layout.description and layout.description ~= "" and " — " .. layout.description or "")
+	end, function(layout)
+		if not layout then
+			return
+		end
+
+		local options = vim.tbl_deep_extend("force", {}, Config.options or {}, { default_layout = layout.id })
+
+		Project.Create(options)
+	end)
+end
+
+-- =========================================================
 -- SAVE CURRENT DIRECTORY AS A LAYOUT
 -- =========================================================
 
@@ -1149,71 +1252,6 @@ function Project.Save_Layout()
 				end)
 			end)
 		end)
-	end)
-end
-
-
--- =========================================================
--- PROJECT SHORTCUTS
--- =========================================================
-
-function Project.Open_Last()
-	local root = Config.get("last_project")
-
-	if type(root) ~= "string" or root == "" or not Is_Directory(root) then
-		Notify("No previous HyperMax project was found.", vim.log.levels.WARN)
-		return
-	end
-
-	vim.cmd("tcd " .. vim.fn.fnameescape(root))
-	Notify("Opened last project: " .. root)
-end
-
-function Project.List()
-	local root = vim.fn.expand(Config.get("project_dir") or "~/Projects")
-	if not Is_Directory(root) then
-		Notify("Project directory does not exist: " .. root, vim.log.levels.WARN)
-		return
-	end
-
-	local entries = uv.fs_scandir(root)
-	local projects = {}
-	if entries then
-		while true do
-			local name, kind = uv.fs_scandir_next(entries)
-			if not name then break end
-			if kind == "directory" then
-				projects[#projects + 1] = { name = name, path = Join_Path(root, name) }
-			end
-		end
-	end
-	table.sort(projects, function(a, b) return a.name:lower() < b.name:lower() end)
-
-	Select_Item(projects, "Choose project to open", function(item)
-		return item.name .. "  —  " .. item.path
-	end, function(choice)
-		if not choice then return end
-		Config.options.last_project = choice.path
-		Config.save()
-		vim.cmd("tcd " .. vim.fn.fnameescape(choice.path))
-		Notify("Opened project: " .. choice.path)
-	end)
-end
-
-function Project.Load_Layout()
-	local ids = Layouts.Get_IDs()
-	if #ids == 0 then
-		Notify("No layouts are available.", vim.log.levels.WARN)
-		return
-	end
-
-	Select_Item(ids, "Choose layout", function(id)
-		local layout = Layouts.Get(id)
-		return (layout and layout.name or id) .. " (" .. id .. ")"
-	end, function(id)
-		if not id then return end
-		local options = vim.tbl_deep_extend("force", {}, Config.options or {}, { default_layout = id })
-		Project.Create(options)
 	end)
 end
 
