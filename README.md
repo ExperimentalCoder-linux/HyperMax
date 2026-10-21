@@ -132,7 +132,7 @@ hypermax.nvim/
 
 ## Documentation and contributing
 
-The [full documentation](doc/FULL_DOCUMENTATION.md) has two parts:
+The [full documentation](doc/README.md) has two parts:
 
 - **User guide:** installation, keymaps, commands, settings, layouts, and troubleshooting.
 - **Developer guide:** architecture, module responsibilities, generation flow, registries, persistence, extension points, and design trade-offs.
