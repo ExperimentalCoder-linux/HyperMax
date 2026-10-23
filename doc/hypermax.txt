@@ -142,15 +142,15 @@ NOTE
 
 HyperMax provides the following user commands.
 
-#                                                    *:-HyperMaxCreate*
+                                                    *:HyperMaxCreate*
 :HyperMaxCreate
     Start the project creation wizard.
 
-#                                                    *:-HyperMaxConfig*
+                                                    *:HyperMaxConfig*
 :HyperMaxConfig
     Display the HyperMax configuration.
 
-#                                                    *:-HyperMaxHealthCheck*
+                                                    *:HyperMaxHealthCheck*
 :HyperMaxHealthCheck
     Run the HyperMax health checks.
 
