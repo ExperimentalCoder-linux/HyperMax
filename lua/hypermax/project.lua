@@ -1183,14 +1183,65 @@ function Project.Open_Last()
 		return
 	end
 
-	path = vim.fn.expand(path)
+	path = vim.fn.fnamemodify(vim.fn.expand(path), ":p")
 
 	if not Is_Directory(path) then
 		Notify("Last project directory no longer exists: " .. path, vim.log.levels.ERROR)
 		return
 	end
 
+	-- Change the working directory for the current tab.
 	vim.cmd("tcd " .. vim.fn.fnameescape(path))
+
+	-- Find a sensible starting file.
+	local candidates = {
+		"main.c",
+		"main.cpp",
+		"main.cc",
+		"main.py",
+		"main.lua",
+		"Main.java",
+		"index.html",
+		"index.js",
+		"index.ts",
+		"src/main.c",
+		"src/main.cpp",
+		"src/main.py",
+		"src/main.lua",
+	}
+
+	local start_file = nil
+
+	for _, relative_path in ipairs(candidates) do
+		local candidate = path .. "/" .. relative_path
+
+		if vim.fn.filereadable(candidate) == 1 then
+			start_file = candidate
+			break
+		end
+	end
+
+	-- Open the selected file, or show the project directory if
+	-- no recognized starting file exists.
+	if start_file then
+		vim.cmd("edit " .. vim.fn.fnameescape(start_file))
+	else
+		-- If the current buffer is empty and unnamed, avoid
+		-- leaving the user looking at an unrelated empty buffer.
+		local current = vim.api.nvim_get_current_buf()
+		local empty_buffer = vim.api.nvim_buf_is_loaded(current)
+			and vim.api.nvim_buf_get_name(current) == ""
+			and vim.bo[current].buftype == ""
+			and not vim.bo[current].modified
+
+		if empty_buffer then
+			vim.cmd("enew")
+		end
+
+		Notify("No recognized main file found. Project directory: " .. path, vim.log.levels.INFO)
+		return
+	end
+
 	Notify("Opened project: " .. path)
 end
 
