@@ -1,6 +1,6 @@
 return {
 	{
-		dir = vim.fn.expand("~/Git/HyperMax/hypermax.nvim"),
+		"ExperimentalCoder-linux/HyperMax",
 		name = "hypermax.nvim",
 		lazy = false,
 

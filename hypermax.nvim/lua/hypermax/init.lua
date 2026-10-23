@@ -51,6 +51,7 @@ function HyperMax.setup(options)
 	Keymaps.Setup(Project, Settings, Layouts)
 	return HyperMax
 end
+
 function HyperMax.get_config()
 	return Config.options
 end
