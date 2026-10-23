@@ -5,6 +5,7 @@ local Managers = require("hypermax.managers")
 local Layouts = require("hypermax.layouts")
 local Config = require("hypermax.config")
 local Progress = require("hypermax.progress")
+local Project_Config = require("hypermax.project_config")
 
 local Project = {}
 
@@ -865,9 +866,91 @@ local function Create_Project(options, language_id, manager_id, root, project_na
 		return
 	end
 
-	Notify("Created project: " .. root)
+	-- Initialize HyperMax project metadata after the files exist.
+	local hmc_ok, hmc_result = Project_Config.Create(root, {
+		name = project_name,
+		language = language_id,
+		manager = manager_id,
+		creator = os.getenv("USER") or "unknown",
+	})
+
+	if not hmc_ok then
+		Notify("Project created, but .hmc initialization failed: " .. tostring(hmc_result), vim.log.levels.WARN)
+	else
+		Notify("Created project and .hmc configuration: " .. root)
+	end
 
 	Open_Project(root, entry, options)
+end
+
+-- =========================================================
+-- QUICK PROJECT CREATION
+-- =========================================================
+
+-- =========================================================
+-- QUICK PROJECT CREATION
+-- =========================================================
+
+function Project.Quick_Create()
+	local global, global_err = Project_Config.Get_Global()
+
+	if not global then
+		Notify("Could not load global configuration: " .. tostring(global_err), vim.log.levels.ERROR)
+		return
+	end
+
+	local options = vim.tbl_deep_extend("force", {}, Config.options or {})
+
+	-- Use global defaults for quick creation.
+	local language_id = global.preferred_language or "c"
+	local manager_id = "native"
+	local location = vim.fn.expand(global.base_location or "~/Projects")
+
+	Input("Quick project name: ", "", function(project_name)
+		if project_name == nil then
+			return
+		end
+
+		project_name = vim.trim(project_name)
+
+		if project_name == "" or project_name:find("[/\\]") or project_name == "." or project_name == ".." then
+			Notify("Invalid project name.", vim.log.levels.ERROR)
+			return
+		end
+
+		local language = Languages.Get(language_id)
+
+		if not language then
+			Notify("Unknown preferred language: " .. language_id, vim.log.levels.ERROR)
+			return
+		end
+
+		local manager = Managers.Get(language_id, manager_id)
+
+		if not manager then
+			Notify("The native manager is not available for " .. language_id, vim.log.levels.ERROR)
+			return
+		end
+
+		local root = Join_Path(location, project_name)
+
+		if uv.fs_stat(root) then
+			Notify("Project path already exists: " .. root, vim.log.levels.ERROR)
+			return
+		end
+
+		-- Use the normal project generator with no custom layout.
+		-- This preserves templates, progress, README, and gitignore
+		-- settings configured in HyperMax.
+		Check_Manager(language_id, manager_id, function(continue)
+			if not continue then
+				Notify("Quick project creation cancelled.")
+				return
+			end
+
+			Create_Project(options, language_id, manager_id, root, project_name, "")
+		end)
+	end)
 end
 
 -- =========================================================

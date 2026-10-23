@@ -1,22 +1,22 @@
 Core
-[ ] Create config.lua
-[ ] Create utils.lua
-[ ] Create init.lua
+[👌] Create config.lua
+[👌] Create utils.lua
+[👌] Create init.lua
 
 Registries
-[ ] Create languages.lua
-[ ] Create managers.lua
-[ ] Create detect.lua
+[👌] Create languages.lua
+[👌] Create managers.lua
+[👌] Create detect.lua
 
 Generation
-[ ] Create templates.lua
-[ ] Create project.lua
+[👌] Create templates.lua
+[👌] Create project.lua
 
 Neovim interface
-[ ] Create ui.lua
-[ ] Register plugin commands
+[👌] Create ui.lua
+[👌] Register plugin commands
 
 Release
-[ ] Add automated tests
-[ ] Write documentation
-[ ] Publish and test GitHub installation
+[👌] Add automated tests
+[👌] Write documentation
+[👌] Publish and test GitHub installation
