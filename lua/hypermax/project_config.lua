@@ -216,10 +216,14 @@ local function Default_Project_Config()
 end
 
 local function Default_Basics(metadata)
+	local project_name = metadata.name or vim.fs.basename(metadata.root)
+	local git_directory = metadata.root .. "/.git"
+	local git_enabled = vim.fn.isdirectory(git_directory) == 1
+
 	return {
 		version = DATA_VERSION,
 		project = {
-			name = metadata.name or vim.fs.basename(metadata.root),
+			name = project_name,
 			root = metadata.root,
 			language = metadata.language or "unknown",
 			manager = metadata.manager or "native",
@@ -227,7 +231,7 @@ local function Default_Basics(metadata)
 			created_at = os.time(),
 		},
 		git = {
-			enabled = vim.fn.isdirectory(Join(metadata.root, ".git")) == 1,
+			enabled = git_enabled,
 		},
 	}
 end
