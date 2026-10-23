@@ -6,6 +6,7 @@ local Layouts = require("hypermax.layouts")
 local Config = require("hypermax.config")
 local Progress = require("hypermax.progress")
 local Project_Config = require("hypermax.project_config")
+local Dashboard = require("hypermax.dashboard")
 
 local Project = {}
 
@@ -881,11 +882,8 @@ local function Create_Project(options, language_id, manager_id, root, project_na
 	end
 
 	Open_Project(root, entry, options)
+	Dashboard.Open(root)
 end
-
--- =========================================================
--- QUICK PROJECT CREATION
--- =========================================================
 
 -- =========================================================
 -- QUICK PROJECT CREATION
@@ -1191,7 +1189,7 @@ function Project.Open_Last()
 	end
 
 	-- Change the working directory for the current tab.
-	vim.cmd("tcd " .. vim.fn.fnameescape(path))
+	Dashboard.Open(path)
 
 	-- Find a sensible starting file.
 	local candidates = {
