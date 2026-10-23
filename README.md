@@ -37,15 +37,25 @@ HyperMax is not claiming to replace every language-specific official tool or spe
 
 ### lazy.nvim
 
+To get the HyperMax working on your personal computer Enter this terminal command to make the HyperMax file
+
+```bash
+python3 -c "import os,pathlib; p=pathlib.Path(os.environ.get('LOCALAPPDATA', str(pathlib.Path.home() / '.config')) if os.name=='nt' else pathlib.Path.home()/'.config') / 'nvim' / 'lua' / 'plugins' / 'hypermax.lua'; p.parent.mkdir(parents=True,exist_ok=True); p.write_text('return {\n    {\n        \"ExperimentalCoder-linux/HyperMax\",\n        name = \"hypermax.nvim\",\n        lazy = false,\n        opts = {\n            project_dir = \"~/Code\",\n            create_missing_dir = true,\n            open_after_create = false,\n            default_language = \"c\",\n        },\n    },\n}\n'); print('Created:', p)"
+```
+
+This is the resulting file that will link your computer to the Hypermax startup
+
 ```lua
 {
     "ExperimentalCoder-linux/HyperMax",
     name = "hypermax.nvim",
-    config = function()
-        require("hypermax").setup({
-            project_dir = "~/Projects",
-        })
-    end,
+    lazy = false,
+    opts = {
+        project_dir = "~/Code",
+        create_missing_dir = true,
+        open_after_create = false,
+        default_language = "c",
+    },
 }
 ```
 
@@ -68,7 +78,7 @@ By default, HyperMax uses `~/Projects` as its project parent directory. The defa
 Mappings are created in normal mode and use your configured `mapleader`.
 
 | Keymap | Action |
-|---|---|
+| --- | --- |
 | `<leader>++` | Open the HyperMax menu |
 | `<leader>+p` | List projects in the configured project directory |
 | `<leader>+s` | Open settings |
@@ -84,7 +94,7 @@ If a mapping conflicts with your own setup, change or remove it in your Neovim c
 ## Commands
 
 | Command | Action |
-|---|---|
+| --- | --- |
 | `:HyperMaxCreate` | Open the project-creation wizard |
 | `:HyperMaxSaveLayout` | Save the current directory as a layout |
 | `:HyperMaxConfig` | Print the current configuration |

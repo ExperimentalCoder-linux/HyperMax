@@ -1,16 +1,9 @@
-return {
-	{
-		"ExperimentalCoder-linux/HyperMax",
-		name = "hypermax.nvim",
-		lazy = false,
+-- Prevent this runtime script from loading twice.
+if vim.g.loaded_hypermax then
+	return
+end
 
-		config = function()
-			require("hypermax").setup({
-				project_dir = "~/Code",
-				create_missing_dir = true,
-				open_after_create = false,
-				default_language = "c",
-			})
-		end,
-	},
-}
+vim.g.loaded_hypermax = true
+
+-- Initialise HyperMax and register its keymaps.
+require("hypermax").setup()
