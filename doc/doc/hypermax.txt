@@ -1,0 +1,263 @@
+*hypermax.txt*  HyperMax.nvim
+
+==============================================================================
+                              HYPERMAX.NVIM
+==============================================================================
+
+HyperMax.nvim is a Neovim plugin for creating and managing coding projects
+directly from Neovim.
+
+This manual documents the available commands, keybindings, configuration
+options, and health checks.
+
+CONTENTS                                                     *hypermax-contents*
+
+1. Introduction ................................. |hypermax-introduction|
+2. Installation ................................. |hypermax-installation|
+3. Configuration ............................... |hypermax-configuration|
+4. Keybindings ................................. |hypermax-keybindings|
+5. Commands .................................... |hypermax-commands|
+6. Project Management ........................... |hypermax-projects|
+7. Layouts ..................................... |hypermax-layouts|
+8. Health Checks ............................... |hypermax-health|
+9. Troubleshooting ............................. |hypermax-troubleshooting|
+
+==============================================================================
+1. INTRODUCTION                                           *hypermax-introduction*
+==============================================================================
+
+HyperMax.nvim provides tools for creating and managing coding projects without
+leaving Neovim.
+
+Its features include:
+
+- Project creation.
+- Language selection.
+- Project manager selection.
+- Project layout management.
+- Configuration settings.
+- Language and project manager health checks.
+
+==============================================================================
+2. INSTALLATION                                           *hypermax-installation*
+==============================================================================
+
+Install HyperMax.nvim using your preferred Neovim plugin manager.
+
+For lazy.nvim, add a plugin specification similar to:
+
+    {
+        "ExperimentalCoder-linux/HyperMax",
+        name = "hypermax.nvim",
+        config = function()
+            require("hypermax").setup({
+                project_dir = "~/Code",
+                create_missing_dir = true,
+                open_after_create = false,
+                default_language = "c",
+            })
+        end,
+    }
+
+After installation, restart Neovim and verify that the plugin loads correctly.
+
+==============================================================================
+3. CONFIGURATION                                         *hypermax-configuration*
+==============================================================================
+
+HyperMax is configured through the setup() function.
+
+Example:
+
+    require("hypermax").setup({
+        project_dir = "~/Code",
+        create_missing_dir = true,
+        open_after_create = false,
+        default_language = "c",
+    })
+
+The following options are available in this configuration example:
+
+project_dir
+    The starting directory used for project creation.
+
+create_missing_dir
+    Controls whether a missing project directory should be created.
+
+open_after_create
+    Controls whether the newly created project should be opened automatically.
+
+default_language
+    Sets the default programming language selected for a new project.
+
+Change these values to match your preferred development workflow.
+
+==============================================================================
+4. KEYBINDINGS                                             *hypermax-keybindings*
+==============================================================================
+
+HyperMax uses the Neovim <Leader> key for its default keybindings.
+
+The default mappings below are registered by HyperMax's keymap setup.
+
+MAIN MENU
+
+    <Leader>++             Open the HyperMax menu.
+
+PROJECT MANAGEMENT
+
+    <Leader>+p             Open the project list.
+
+    <Leader>+n             Create a new project.
+
+    <Leader>+r             Create a project using the project wizard.
+
+LAYOUTS
+
+    <Leader>+l             Load a project layout.
+
+    <Leader>+L             Save the current project as a layout.
+
+SETTINGS
+
+    <Leader>+s             Open HyperMax settings.
+
+OTHER
+
+    <Leader>+o             Open the last project.
+
+    <Leader>+c             Show HyperMax configuration.
+
+    <Leader>+h             Run the HyperMax health checks.
+
+NOTE
+
+    Keybindings depend on HyperMax's keymap setup being loaded. If a mapping
+    does not work, check that the plugin loaded successfully and that another
+    plugin has not overridden the mapping.
+
+==============================================================================
+5. COMMANDS                                                  *hypermax-commands*
+==============================================================================
+
+HyperMax provides the following user commands.
+
+                                                    *:HyperMaxCreate*
+:HyperMaxCreate
+    Start the project creation wizard.
+
+                                                    *:HyperMaxConfig*
+:HyperMaxConfig
+    Display the HyperMax configuration.
+
+                                                    *:HyperMaxHealthCheck*
+:HyperMaxHealthCheck
+    Run the HyperMax health checks.
+
+==============================================================================
+6. PROJECT MANAGEMENT                                         *hypermax-projects*
+==============================================================================
+
+HyperMax provides project creation and management functions through its
+menu and keybindings.
+
+PROJECT CREATION
+
+    Use <Leader>+n to create a new project using the configured options.
+
+    Use <Leader>+r or :HyperMaxCreate to start the project wizard.
+
+PROJECT LIST
+
+    Use <Leader>+p to open the project list.
+
+LAST PROJECT
+
+    Use <Leader>+o to open the last project.
+
+The exact available project actions depend on the functions implemented by
+the installed version of HyperMax.nvim.
+
+==============================================================================
+7. LAYOUTS                                                    *hypermax-layouts*
+==============================================================================
+
+HyperMax supports saving and loading project layouts.
+
+SAVE A LAYOUT
+
+    Use <Leader>+L to save the current project as a layout.
+
+LOAD A LAYOUT
+
+    Use <Leader>+l to load a saved layout.
+
+Layouts can represent a project's directory and file structure, allowing
+reusable project structures to be applied when creating or managing projects.
+
+==============================================================================
+8. HEALTH CHECKS                                                *hypermax-health*
+==============================================================================
+
+HyperMax includes a health-check command for checking its supported languages
+and project managers.
+
+Run the check using:
+
+    :HyperMaxHealthCheck
+
+Alternatively, use:
+
+    <Leader>+h
+
+The health check runs the plugin's test runner to report test results.
+
+If a test fails, inspect the output to identify the failing test and its
+associated error.
+
+==============================================================================
+9. TROUBLESHOOTING                                      *hypermax-troubleshooting*
+==============================================================================
+
+PLUGIN NOT LOADING
+
+    Verify that the repository is installed with this structure:
+
+        hypermax.nvim/
+        |-- doc/
+        |-- lua/
+        |   `-- hypermax/
+        |       |-- init.lua
+        |       |-- config.lua
+        |       |-- keymaps.lua
+        |       |-- languages.lua
+        |       |-- layouts.lua
+        |       |-- managers.lua
+        |       |-- project.lua
+        |       `-- settings.lua
+        |-- plugin/
+        `-- tests/
+
+    The lua/hypermax/ directory must be directly inside the plugin root.
+
+DOCUMENTATION ERRORS
+
+    Neovim help documentation uses .txt files inside the doc/ directory.
+
+    This file provides the native help entry for HyperMax.nvim. The Markdown
+    README can remain alongside it.
+
+COMMAND NOT FOUND
+
+    Confirm that the plugin loaded successfully and that the command is
+    registered by the installed version.
+
+==============================================================================
+                                                        *hypermax-about*
+ABOUT
+
+HyperMax.nvim
+Repository: https://github.com/ExperimentalCoder-linux/HyperMax
+
+ vim:tw=78:ts=8:ft=help:norl:
+
