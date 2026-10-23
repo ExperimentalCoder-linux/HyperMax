@@ -4,6 +4,30 @@ local Config = require("hypermax.config")
 
 local Keymaps = {}
 
+local function Run_Health_Check()
+	-- Find the plugin root from this file's location.
+	local source = debug.getinfo(1, "S").source:sub(2)
+	local plugin_root = vim.fs.dirname(vim.fs.dirname(vim.fs.dirname(source)))
+
+	-- Run the tests in a separate, clean Neovim process.
+	vim.cmd("botright new")
+
+	vim.fn.termopen({
+		vim.v.progpath,
+		"--headless",
+		"-u",
+		"NONE",
+		"-c",
+		"cd " .. vim.fn.fnameescape(plugin_root),
+		"-c",
+		"set rtp+=.",
+		"-c",
+		"luafile tests/run.lua",
+		"-c",
+		"qa!",
+	})
+end
+
 local function Map(key, action, description)
 	vim.keymap.set("n", "<leader>+" .. key, action, {
 		desc = "HyperMax: " .. description,
@@ -20,6 +44,7 @@ function Keymaps.Setup(Project, Settings, Layouts)
 			"Load layout",
 			"Save current project as layout",
 			"Open last project",
+			"Health Check",
 		}, {
 			prompt = "HyperMax",
 		}, function(choice)
@@ -33,6 +58,8 @@ function Keymaps.Setup(Project, Settings, Layouts)
 				Project.Save_Layout()
 			elseif choice == "Open last project" then
 				Project.Open_Last()
+			elseif choice == "Health Check" then
+				Run_Health_Check()
 			end
 		end)
 	end, "Open menu")
@@ -69,6 +96,10 @@ function Keymaps.Setup(Project, Settings, Layouts)
 	Map("n", function()
 		Project.Create(Config.options)
 	end, "New Project")
+
+	Map("h", function()
+		vim.cmd("HyperMaxHealthCheck")
+	end, "Health Check")
 end
 
 return Keymaps
