@@ -18,9 +18,41 @@ local IGNORED_DIRECTORIES = {
 
 local MAX_LAYOUT_FILE_SIZE = 1024 * 1024
 
+-- =========================================================
+-- PATHS
+-- =========================================================
+
 local function Join(...)
 	return table.concat({ ... }, "/"):gsub("/+", "/")
 end
+
+local function Get_Global_Directory()
+	return Join(vim.fn.stdpath("data"), "hypermax")
+end
+
+local function Get_Global_Config_Path()
+	return Join(Get_Global_Directory(), "config.json")
+end
+
+local function Get_HMC_Directory(project_root)
+	return Join(project_root, ".hmc")
+end
+
+local function Get_HMC_Paths(project_root)
+	local directory = Get_HMC_Directory(project_root)
+
+	return {
+		directory = directory,
+		layout = Join(directory, "layout.json"),
+		config = Join(directory, "config.json"),
+		basics = Join(directory, "basics.json"),
+		history = Join(directory, "project.bin"),
+	}
+end
+
+-- =========================================================
+-- FILESYSTEM
+-- =========================================================
 
 local function Ensure_Directory(path)
 	if vim.fn.isdirectory(path) == 1 then
@@ -98,29 +130,9 @@ local function Write_JSON(path, data)
 	return Write_File(path, encoded .. "\n")
 end
 
-local function Get_Global_Directory()
-	return Join(vim.fn.stdpath("data"), "hypermax")
-end
-
-local function Get_Global_Config_Path()
-	return Join(Get_Global_Directory(), "config.json")
-end
-
-local function Get_HMC_Directory(project_root)
-	return Join(project_root, ".hmc")
-end
-
-local function Get_HMC_Paths(project_root)
-	local directory = Get_HMC_Directory(project_root)
-
-	return {
-		directory = directory,
-		layout = Join(directory, "layout.json"),
-		config = Join(directory, "config.json"),
-		basics = Join(directory, "basics.json"),
-		history = Join(directory, "project.bin"),
-	}
-end
+-- =========================================================
+-- DIRECTORY CAPTURE
+-- =========================================================
 
 local function Capture_Directory(project_root)
 	local entries = {}
@@ -159,17 +171,17 @@ local function Capture_Directory(project_root)
 					local entry = {
 						path = relative_path,
 						type = "file",
+						content_saved = false,
 					}
 
 					if stat and stat.size <= MAX_LAYOUT_FILE_SIZE then
 						local content = Read_File(full_path)
 
-						if content then
+						-- Avoid saving likely binary files as text.
+						if content and not content:find("\0", 1, true) then
 							entry.content = content
 							entry.content_saved = true
 						end
-					else
-						entry.content_saved = false
 					end
 
 					entries[#entries + 1] = entry
@@ -191,6 +203,10 @@ local function Capture_Directory(project_root)
 		captured_at = os.time(),
 	}
 end
+
+-- =========================================================
+-- DEFAULT CONFIGURATIONS
+-- =========================================================
 
 local function Default_Project_Config()
 	return {
@@ -226,6 +242,28 @@ local function Default_Global_Config()
 	}
 end
 
+-- =========================================================
+-- PUBLIC PATH AND EXISTENCE FUNCTIONS
+-- =========================================================
+
+function Project_Config.Get_Paths(project_root)
+	project_root = vim.fn.fnamemodify(project_root, ":p")
+	return Get_HMC_Paths(project_root)
+end
+
+-- Checks whether the project's .hmc directory exists.
+function Project_Config.Exists(project_root)
+	project_root = vim.fn.fnamemodify(project_root, ":p")
+
+	local hmc_directory = Get_HMC_Directory(project_root)
+
+	return vim.fn.isdirectory(hmc_directory) == 1
+end
+
+-- =========================================================
+-- GLOBAL CONFIGURATION
+-- =========================================================
+
 function Project_Config.Get_Global()
 	local path = Get_Global_Config_Path()
 	local parent = Get_Global_Directory()
@@ -259,13 +297,9 @@ function Project_Config.Save_Global(data)
 	return Write_JSON(Get_Global_Config_Path(), data)
 end
 
-function Project_Config.Get_Paths(project_root)
-	return Get_HMC_Paths(vim.fn.fnamemodify(project_root, ":p"))
-end
-
-function Project_Config.Exists(project_root)
-	return vim.fn.isdirectory(Get_HMC_Directory(project_root)) == 1
-end
+-- =========================================================
+-- CREATE PROJECT CONFIGURATION
+-- =========================================================
 
 function Project_Config.Create(project_root, metadata)
 	project_root = vim.fn.fnamemodify(project_root, ":p")
@@ -273,6 +307,10 @@ function Project_Config.Create(project_root, metadata)
 	metadata.root = project_root
 
 	local paths = Get_HMC_Paths(project_root)
+
+	if vim.fn.isdirectory(project_root) ~= 1 then
+		return false, "Project directory does not exist: " .. project_root
+	end
 
 	if Project_Config.Exists(project_root) then
 		return false, "This project already has a .hmc directory"
@@ -316,6 +354,10 @@ function Project_Config.Create(project_root, metadata)
 	return true, paths
 end
 
+-- =========================================================
+-- LOAD PROJECT CONFIGURATION
+-- =========================================================
+
 function Project_Config.Load(project_root)
 	project_root = vim.fn.fnamemodify(project_root, ":p")
 
@@ -353,8 +395,12 @@ function Project_Config.Load(project_root)
 	}
 end
 
+-- =========================================================
+-- PROJECT SETTINGS
+-- =========================================================
+
 function Project_Config.Save_Project_Settings(project_root, settings)
-	local paths = Get_HMC_Paths(project_root)
+	local paths = Get_HMC_Paths(vim.fn.fnamemodify(project_root, ":p"))
 
 	if not Project_Config.Exists(project_root) then
 		return false, "This project has no .hmc directory"
