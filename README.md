@@ -140,6 +140,23 @@ hypermax.nvim/
 └── doc/FULL_DOCUMENTATION.md  # Full user and developer guide
 ```
 
+### Project metadata and entry point
+
+Each HyperMax project stores its metadata in `.hmc/basics.json`. The `project.entry_point` object records the relative path to the entry file and the function that starts the program. For example:
+
+```json
+{
+  "project": {
+    "entry_point": {
+      "file": "src/main.c",
+      "function": "main"
+    }
+  }
+}
+```
+
+HyperMax writes this information when creating a project, and the project panel highlights that file. Paths are relative to the project root so the project can be moved without changing the entry-point path. The dashboard opens selected files in the editor window beside the persistent left-hand panel.
+
 ## Documentation and contributing
 
 The [full documentation](hypermax.nvim/doc/README.md) has two parts:

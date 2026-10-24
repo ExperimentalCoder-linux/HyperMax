@@ -229,6 +229,10 @@ local function Default_Basics(metadata)
 			manager = metadata.manager or "native",
 			creator = metadata.creator or os.getenv("USER") or "unknown",
 			created_at = os.time(),
+			entry_point = {
+				file = metadata.entry_file or "",
+				["function"] = metadata.entry_function or "main",
+			},
 		},
 		git = {
 			enabled = git_enabled,

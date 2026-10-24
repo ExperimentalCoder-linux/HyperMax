@@ -50,9 +50,37 @@ local function Flush_Scheduled_Callbacks()
 end
 
 local function Create_Test_Directory()
-	local Path = vim.fn.tempname()
-	vim.fn.mkdir(Path, "p")
-	return vim.fn.fnamemodify(Path, ":p")
+	local Path = vim.fn.fnamemodify(vim.fn.tempname(), ":p")
+	vim.fn.mkdir(Path .. "/.hmc", "p")
+
+	local Basics = {
+		version = 1,
+		project = {
+			name = "DashboardTest",
+			root = Path,
+			language = "c",
+			manager = "native",
+			creator = "tests",
+			created_at = os.time(),
+			entry_point = {
+				file = "src/main.c",
+				["function"] = "main",
+			},
+		},
+		git = { enabled = false },
+	}
+
+	vim.fn.mkdir(Path .. "/src", "p")
+
+	local config_file = assert(io.open(Path .. "/.hmc/basics.json", "w"))
+	config_file:write(vim.json.encode(Basics))
+	config_file:close()
+
+	local main_file = assert(io.open(Path .. "/src/main.c", "w"))
+	main_file:write("int main(void) { return 0; }\n")
+	main_file:close()
+
+	return Path
 end
 
 local function Remove_Test_Directory(Path)
@@ -112,36 +140,88 @@ end)
 -- again. This helps detect stale buffer IDs in keymap setup.
 local Dashboard = require("hypermax.dashboard")
 Test("Dashboard: dashboard can reopen after its buffer is deleted", function()
-	Dashboard.Open(Root)
-	vim.wait(100)
-
-	local dashboard_buffer = vim.api.nvim_get_current_buf()
-
-	Assert(vim.api.nvim_buf_is_valid(dashboard_buffer), "Dashboard buffer should initially be valid")
-
-	-- Record what buffer we are testing.
-	print("Dashboard buffer ID: " .. dashboard_buffer)
-	print("Dashboard buffer name: " .. vim.api.nvim_buf_get_name(dashboard_buffer))
-
-	-- Move to a separate buffer.
-	local other_buffer = vim.api.nvim_create_buf(true, false)
-	vim.api.nvim_set_current_buf(other_buffer)
-
-	Assert(vim.api.nvim_get_current_buf() ~= dashboard_buffer, "Should switch away from the dashboard buffer")
-
-	-- Delete the dashboard buffer explicitly.
-	vim.api.nvim_buf_delete(dashboard_buffer, { force = true })
-
-	print("Dashboard buffer valid after deletion: " .. tostring(vim.api.nvim_buf_is_valid(dashboard_buffer)))
-
-	Assert(not vim.api.nvim_buf_is_valid(dashboard_buffer), "Old dashboard buffer should be deleted")
-
-	-- Reopen the dashboard.
+	local Root = Create_Test_Directory()
 	local ok, err = pcall(Dashboard.Open, Root)
+	Assert(ok, "Dashboard open failed: " .. tostring(err))
 
-	Assert(ok, "Dashboard should reopen after deletion: " .. tostring(err))
+	local state = Dashboard.Get_State()
+	local old_buffer = state.buffer
+	local old_window = state.window
 
+	Assert(vim.api.nvim_buf_is_valid(old_buffer), "Dashboard buffer should initially be valid")
+	Assert(vim.api.nvim_win_is_valid(old_window), "Dashboard panel window should initially be valid")
+
+	local editor_window
+	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+		if win ~= old_window then
+			editor_window = win
+			break
+		end
+	end
+	Assert(editor_window ~= nil, "Dashboard should leave an editor window beside the panel")
+	vim.api.nvim_set_current_win(editor_window)
+	vim.api.nvim_buf_delete(old_buffer, { force = true })
+
+	Assert(not vim.api.nvim_buf_is_valid(old_buffer), "Old dashboard buffer should be deleted")
+
+	local reopened, reopen_err = pcall(Dashboard.Open, Root)
+	Assert(reopened, "Dashboard should reopen after deletion: " .. tostring(reopen_err))
 	Assert(vim.api.nvim_buf_is_valid(vim.api.nvim_get_current_buf()), "Current buffer should be valid after reopening")
+
+	Remove_Test_Directory(Root)
+end)
+
+Test("Project metadata: basics.json records the entry file and main function", function()
+	local Root = vim.fn.fnamemodify(vim.fn.tempname(), ":p")
+	vim.fn.mkdir(Root .. "/src", "p")
+
+	local main_file = assert(io.open(Root .. "/src/main.c", "w"))
+	main_file:write("int main(void) { return 0; }\n")
+	main_file:close()
+
+	local Project_Config = require("hypermax.project_config")
+	local ok, result = Project_Config.Create(Root, {
+		name = "EntryPointTest",
+		language = "c",
+		manager = "native",
+		entry_file = "src/main.c",
+		entry_function = "main",
+	})
+	Assert(ok, "Could not create .hmc metadata: " .. tostring(result))
+
+	local loaded, err = Project_Config.Load(Root)
+	Assert(loaded ~= nil, "Could not reload .hmc metadata: " .. tostring(err))
+	Assert(loaded.basics.project.entry_point.file == "src/main.c", "basics.json should record the entry file")
+	Assert(loaded.basics.project.entry_point["function"] == "main", "basics.json should record the main function")
+
+	Remove_Test_Directory(Root)
+end)
+
+Test("Dashboard: opening an entry file keeps the sidebar visible", function()
+	local Root = Create_Test_Directory()
+	Assert(Dashboard.Open(Root), "Dashboard should open for a valid project")
+
+	local state = Dashboard.Get_State()
+	local panel_window = state.window
+	local panel_buffer = state.buffer
+	local entry_path = vim.fs.normalize(Root .. "/src/main.c")
+	local entry_line = state.line_by_path[entry_path]
+
+	Assert(entry_line ~= nil, "Entry file should appear in the project tree")
+	Assert(state.metadata.entry_file == "src/main.c", "Entry file should load from basics.json")
+	Assert(state.metadata.entry_function == "main", "Entry function should load from basics.json")
+
+	vim.api.nvim_set_current_win(panel_window)
+	vim.api.nvim_win_set_cursor(panel_window, { entry_line, 0 })
+	vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<CR>", true, false, true), "x", false)
+
+	local opened = vim.api.nvim_get_current_buf()
+	Assert(vim.api.nvim_buf_is_valid(opened), "Opened entry buffer should be valid")
+	Assert(vim.api.nvim_buf_get_name(opened) == entry_path, "Enter should open the configured entry file")
+	Assert(vim.api.nvim_win_is_valid(panel_window), "Opening a file must not close the panel window")
+	Assert(vim.api.nvim_win_get_buf(panel_window) == panel_buffer, "Opening a file must not replace the panel buffer")
+
+	Remove_Test_Directory(Root)
 end)
 
 -- Dashboard rendering must not try to edit an unrelated,

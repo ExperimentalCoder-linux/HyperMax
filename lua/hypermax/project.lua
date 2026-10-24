@@ -873,6 +873,8 @@ local function Create_Project(options, language_id, manager_id, root, project_na
 		language = language_id,
 		manager = manager_id,
 		creator = os.getenv("USER") or "unknown",
+		entry_file = entry,
+		entry_function = "main",
 	})
 
 	if not hmc_ok then
