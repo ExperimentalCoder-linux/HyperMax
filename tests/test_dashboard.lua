@@ -252,7 +252,7 @@ Test("Dashboard: opening an entry file keeps the sidebar visible", function()
 	local state = Dashboard.Get_State()
 	local panel_window = state.window
 	local panel_buffer = state.buffer
-	local entry_path = vim.fs.normalize(Root .. "/src/main.c")
+	local entry_path = vim.fn.fnamemodify(Root .. "/src/main.c", ":p")
 	local entry_line = state.line_by_path[entry_path]
 
 	Assert(entry_line ~= nil, "Entry file should appear in the project tree")

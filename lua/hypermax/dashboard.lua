@@ -47,6 +47,16 @@ local function Notify(message, level)
 	vim.notify("HyperMax: " .. message, level or vim.log.levels.INFO)
 end
 
+local function Normalize_Path(path)
+	-- Use fnamemodify instead of vim.fs.normalize for compatibility across
+	-- Neovim versions whose normalize() option signatures differ.
+	local normalized = vim.fn.fnamemodify(path, ":p")
+	if normalized ~= "/" then
+		normalized = normalized:gsub("/+$", "")
+	end
+	return normalized
+end
+
 local function Is_Directory(path)
 	local stat = uv.fs_stat(path)
 	return stat ~= nil and stat.type == "directory"
@@ -67,8 +77,8 @@ local function Safe_Child_Path(input)
 			return nil, "Relative paths cannot contain . or .."
 		end
 	end
-	local full = vim.fs.normalize(Join(State.root, input))
-	local root = vim.fs.normalize(State.root)
+	local full = Normalize_Path(Join(State.root, input))
+	local root = Normalize_Path(State.root)
 	if full:sub(1, #root + 1) ~= root .. "/" then
 		return nil, "Path must stay inside the project"
 	end
@@ -90,25 +100,29 @@ end
 
 local function Refresh_Git()
 	State.git = { available = false, branch = nil, statuses = {} }
-	local branch = Git_Command({ "rev-parse", "--abbrev-ref", "HEAD" })
-	if not branch then
+	-- A newly initialized repository may not have a first commit yet, so do
+	-- not use HEAD resolution as the test for whether Git is available.
+	local inside = Git_Command({ "rev-parse", "--is-inside-work-tree" })
+	if not inside or inside[1] ~= "true" then
 		return
 	end
-	local statuses = Git_Command({ "status", "--porcelain=v1", "--untracked-files=all" }) or {}
+
 	State.git.available = true
-	State.git.branch = branch[1] or "HEAD"
+	local branch = Git_Command({ "branch", "--show-current" })
+	State.git.branch = branch and branch[1] ~= "" and branch[1] or "unborn"
+	local statuses = Git_Command({ "status", "--porcelain=v1", "--untracked-files=all" }) or {}
 	for _, row in ipairs(statuses) do
 		local code = row:sub(1, 2)
 		local path = row:sub(4)
 		if path:find(" -> ", 1, true) then
 			path = path:match(" -> (.+)$") or path
 		end
-		State.git.statuses[vim.fs.normalize(Join(State.root, path))] = code
+		State.git.statuses[Normalize_Path(Join(State.root, path))] = code
 	end
 end
 
 local function Git_Marker(path)
-	local status = State.git.statuses[vim.fs.normalize(path)]
+	local status = State.git.statuses[Normalize_Path(path)]
 	if not status then return " " end
 	if status == "??" then return "?" end
 	if status:find("A", 1, true) then return "+" end
@@ -519,7 +533,7 @@ local function Create_Item(kind)
 			State.expanded[parent] = true
 		end
 		Refresh()
-		local line = State.line_by_path[vim.fs.normalize(path)]
+		local line = State.line_by_path[Normalize_Path(path)]
 		if line and State.window and vim.api.nvim_win_is_valid(State.window) then
 			vim.api.nvim_win_set_cursor(State.window, { line, 0 })
 		end
