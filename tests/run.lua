@@ -1,7 +1,7 @@
 -- =========================================================
 -- HYPERMAX TEST RUNNER
 -- =========================================================
-
+package.path = "./tests/?.lua;" .. package.path
 local source = debug.getinfo(1, "S").source
 
 if source:sub(1, 1) == "@" then
@@ -36,6 +36,7 @@ local test_files = {
 	"tests/test_managers.lua",
 	"tests/test_layout.lua",
 	"tests/test_progress.lua",
+	"tests/test_dashboard.lua",
 }
 
 -- =========================================================
