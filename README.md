@@ -91,6 +91,24 @@ Mappings are created in normal mode and use your configured `mapleader`.
 
 If a mapping conflicts with your own setup, change or remove it in your Neovim configuration.
 
+
+## Dashboard file and Git controls
+
+When a HyperMax project is open, its persistent sidebar supports these normal-mode keys:
+
+| Key | Action |
+|---|---|
+| `Enter` | Open the selected file or expand/collapse a folder |
+| `a` | Create a file using a project-relative path (for example `src/player.c`) |
+| `A` | Create a folder using a project-relative path |
+| `s` | Cycle sorting: alphabetical → file type → modified date → created date |
+| `g` | Open Git actions: status, stage all, commit, push, pull, recent commits, and initialize |
+| `G` | Initialize a Git repository in this project if it is not already one |
+| `r` | Refresh the tree and Git status |
+| `q` | Close the sidebar |
+
+Git decorations show untracked (`?`), added (`+`), modified (`●`), deleted (`−`), and renamed (`»`) files. Date sorting uses filesystem timestamps; on systems/filesystems that do not expose a birth time, the created-date sort falls back to the file's change time. New paths must stay inside the project, and existing files/folders are never overwritten.
+
 ## Commands
 
 | Command | Action |

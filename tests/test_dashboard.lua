@@ -171,6 +171,54 @@ Test("Dashboard: dashboard can reopen after its buffer is deleted", function()
 	Remove_Test_Directory(Root)
 end)
 
+Test("Dashboard: create files and folders and cycle sort modes", function()
+	local Root = Create_Test_Directory()
+	local Dashboard = require("hypermax.dashboard")
+	Assert(Dashboard.Open(Root), "Dashboard should open")
+	local state = Dashboard.Get_State()
+	vim.api.nvim_set_current_win(state.window)
+
+	local original_input = vim.ui.input
+	local next_input = "src/created.c"
+	vim.ui.input = function(_, callback) callback(next_input) end
+	local ok_file, err_file = pcall(function()
+		vim.api.nvim_feedkeys("a", "x", false)
+	end)
+	vim.ui.input = function(_, callback) callback("src/new_folder") end
+	local ok_folder, err_folder = pcall(function()
+		vim.api.nvim_feedkeys("A", "x", false)
+	end)
+	vim.ui.input = original_input
+
+	Assert(ok_file, "File creation mapping failed: " .. tostring(err_file))
+	Assert(ok_folder, "Folder creation mapping failed: " .. tostring(err_folder))
+	Assert(vim.fn.filereadable(Root .. "/src/created.c") == 1, "Dashboard should create a file")
+	Assert(vim.fn.isdirectory(Root .. "/src/new_folder") == 1, "Dashboard should create a folder")
+
+	local old_mode = state.sort_mode
+	vim.api.nvim_set_current_win(state.window)
+	vim.api.nvim_feedkeys("s", "x", false)
+	Assert(state.sort_mode ~= old_mode, "Sort key should cycle to the next sorting mode")
+	Remove_Test_Directory(Root)
+end)
+
+Test("Dashboard: Git status is detected for a repository", function()
+	if vim.fn.executable("git") ~= 1 then
+		print("[SKIP] Git is not installed")
+		return
+	end
+	local Root = Create_Test_Directory()
+	local result = vim.fn.systemlist({ "git", "-C", Root, "init" })
+	Assert(vim.v.shell_error == 0, "Could not initialize test Git repository: " .. table.concat(result, "\n"))
+	local Dashboard = require("hypermax.dashboard")
+	Assert(Dashboard.Open(Root), "Dashboard should open for Git project")
+	local state = Dashboard.Get_State()
+	Assert(state.git.available, "Dashboard should detect the Git repository")
+	Assert(type(state.git.branch) == "string", "Dashboard should display a Git branch")
+	Assert(next(state.git.statuses) ~= nil, "Git status should detect untracked project files")
+	Remove_Test_Directory(Root)
+end)
+
 Test("Project metadata: basics.json records the entry file and main function", function()
 	local Root = vim.fn.fnamemodify(vim.fn.tempname(), ":p")
 	vim.fn.mkdir(Root .. "/src", "p")
