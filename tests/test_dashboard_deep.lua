@@ -59,6 +59,10 @@ end
 local sort_expected = { "file type", "modified", "created", "alphabetical", "file type", "modified", "created", "alphabetical" }
 Test.Run("Dashboard sort cycling wraps and keeps mode names valid", function()
 	local root = New_Project(); local state = Open(root)
+	-- Sorting mode is intentionally persistent across projects. Reset it here
+	-- so this test is independent of whichever tests ran before it.
+	state.sort_mode = 1
+	Dashboard.Refresh()
 	for _, expected in ipairs(sort_expected) do
 		local mode = Dashboard.Cycle_Sort()
 		Test.Equal(expected, mode)
