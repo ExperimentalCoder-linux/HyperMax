@@ -175,6 +175,16 @@ Each HyperMax project stores its metadata in `.hmc/basics.json`. The `project.en
 
 HyperMax writes this information when creating a project, and the project panel highlights that file. Paths are relative to the project root so the project can be moved without changing the entry-point path. The dashboard opens selected files in the editor window beside the persistent left-hand panel.
 
+## Testing
+
+Run the complete test suite from the repository root:
+
+```bash
+nvim --headless -u NONE -c "set rtp+=." -c "luafile tests/run.lua"
+```
+
+The focused filesystem, Git, and dashboard suites use temporary directories and exercise invalid paths, traversal attempts, existing-file collisions, nested paths, symlink escapes (where supported), Git repositories without commits, nested repositories, status parsing, UI keymaps, and dashboard refresh behaviour. Git integration tests are skipped when the `git` executable is unavailable. A passing test suite is a checkpoint, not a guarantee that every terminal/UI plugin combination behaves identically.
+
 ## Documentation and contributing
 
 The [full documentation](hypermax.nvim/doc/README.md) has two parts:

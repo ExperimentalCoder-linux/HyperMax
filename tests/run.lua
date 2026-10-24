@@ -36,7 +36,10 @@ local test_files = {
 	"tests/test_managers.lua",
 	"tests/test_layout.lua",
 	"tests/test_progress.lua",
+	"tests/test_filesystem.lua",
+	"tests/test_git.lua",
 	"tests/test_dashboard.lua",
+	"tests/test_dashboard_deep.lua",
 }
 
 -- =========================================================

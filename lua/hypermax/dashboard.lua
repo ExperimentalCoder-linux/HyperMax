@@ -2,6 +2,8 @@ local Dashboard = {}
 
 local uv = vim.uv or vim.loop
 local Project_Config = require("hypermax.project_config")
+local Filesystem = require("hypermax.filesystem")
+local Git = require("hypermax.git")
 
 local MAX_TREE_ENTRIES = 200
 local MAX_TREE_DEPTH = 5
@@ -48,13 +50,7 @@ local function Notify(message, level)
 end
 
 local function Normalize_Path(path)
-	-- Use fnamemodify instead of vim.fs.normalize for compatibility across
-	-- Neovim versions whose normalize() option signatures differ.
-	local normalized = vim.fn.fnamemodify(path, ":p")
-	if normalized ~= "/" then
-		normalized = normalized:gsub("/+$", "")
-	end
-	return normalized
+	return Filesystem.Normalize(path)
 end
 
 local function Is_Directory(path)
@@ -68,57 +64,15 @@ local function Is_File(path)
 end
 
 local function Safe_Child_Path(input)
-	input = vim.trim(input or ""):gsub("\\", "/")
-	if input == "" or input:sub(1, 1) == "/" or input:match("^%a:") then
-		return nil, "Enter a non-empty relative path"
-	end
-	for part in input:gmatch("[^/]+") do
-		if part == ".." or part == "." then
-			return nil, "Relative paths cannot contain . or .."
-		end
-	end
-	local full = Normalize_Path(Join(State.root, input))
-	local root = Normalize_Path(State.root)
-	if full:sub(1, #root + 1) ~= root .. "/" then
-		return nil, "Path must stay inside the project"
-	end
-	return full
+	return Filesystem.Safe_Child(State.root, input)
 end
 
 local function Git_Command(args)
-	if vim.fn.executable("git") ~= 1 then
-		return nil, "Git is not installed or not on PATH"
-	end
-	local command = { "git", "-C", State.root }
-	vim.list_extend(command, args)
-	local output = vim.fn.systemlist(command)
-	if vim.v.shell_error ~= 0 then
-		return nil, table.concat(output, "\n")
-	end
-	return output
+	return Git.Run(State.root, args)
 end
 
 local function Refresh_Git()
-	State.git = { available = false, branch = nil, statuses = {} }
-	-- A newly initialized repository may not have a first commit yet, so do
-	-- not use HEAD resolution as the test for whether Git is available.
-	local inside = Git_Command({ "rev-parse", "--is-inside-work-tree" })
-	if not inside or inside[1] ~= "true" then
-		return
-	end
-
-	State.git.available = true
-	local branch = Git_Command({ "branch", "--show-current" })
-	State.git.branch = branch and branch[1] ~= "" and branch[1] or "unborn"
-	local statuses = Git_Command({ "status", "--porcelain=v1", "--untracked-files=all" }) or {}
-	for _, row in ipairs(statuses) do
-		local code = row:sub(1, 2)
-		local path = row:sub(4)
-		if path:find(" -> ", 1, true) then
-			path = path:match(" -> (.+)$") or path
-		end
-		State.git.statuses[Normalize_Path(Join(State.root, path))] = code
-	end
+	State.git = Git.Snapshot(State.root)
 end
 
 local function Git_Marker(path)
@@ -492,6 +446,34 @@ local function Refresh()
 	Render()
 end
 
+-- Refresh the sidebar after terminal-driven Git actions finish. Register this
+-- before launching any terminal command so fast exits cannot race the handler.
+local Git_Terminal_Augroup = vim.api.nvim_create_augroup("HyperMaxDashboardGitRefresh", { clear = true })
+vim.api.nvim_create_autocmd("TermClose", {
+	group = Git_Terminal_Augroup,
+	callback = function()
+		vim.schedule(function()
+			if State.root and State.root ~= "" then Refresh() end
+		end)
+	end,
+})
+
+local function Reveal_Created_Path(kind, path)
+	local root = Normalize_Path(State.root)
+	local cursor = kind == "folder" and Normalize_Path(path) or Normalize_Path(vim.fn.fnamemodify(path, ":h"))
+	while cursor and cursor ~= root and Filesystem.Is_Within(root, cursor) do
+		State.expanded[cursor] = true
+		local parent = Normalize_Path(vim.fn.fnamemodify(cursor, ":h"))
+		if not parent or parent == cursor then break end
+		cursor = parent
+	end
+	Refresh()
+	local line = State.line_by_path[Normalize_Path(path)]
+	if line and State.window and vim.api.nvim_win_is_valid(State.window) then
+		vim.api.nvim_win_set_cursor(State.window, { line, 0 })
+	end
+end
+
 local function Cycle_Sort()
 	State.sort_mode = (State.sort_mode % #SORT_MODES) + 1
 	Refresh()
@@ -500,45 +482,26 @@ end
 
 local function Create_Item(kind)
 	local label = kind == "file" and "New file path (relative to project):" or "New folder path (relative to project):"
-	vim.ui.input({ prompt = label }, function(input)
-		if not input or vim.trim(input) == "" then return end
-		local path, err = Safe_Child_Path(input)
-		if not path then
-			Notify(err, vim.log.levels.ERROR)
+	local input_ok, input_error = pcall(vim.ui.input, { prompt = label }, function(input)
+		local call_ok, created, path_or_error, detail = pcall(Filesystem.Create, State.root, kind, input)
+		if not call_ok then
+			Notify("Could not create " .. kind .. ": " .. tostring(created), vim.log.levels.ERROR)
 			return
 		end
-		if uv.fs_lstat(path) then
-			Notify("Already exists: " .. input, vim.log.levels.WARN)
-			return
-		end
-		local parent = vim.fn.fnamemodify(path, ":h")
-		if parent ~= State.root and vim.fn.mkdir(parent, "p") == 0 and not Is_Directory(parent) then
-			Notify("Could not create parent directory: " .. parent, vim.log.levels.ERROR)
-			return
-		end
-		if kind == "folder" then
-			if vim.fn.mkdir(path, "p") == 0 and not Is_Directory(path) then
-				Notify("Could not create folder: " .. input, vim.log.levels.ERROR)
-				return
+		if not created then
+			local failure = path_or_error or detail
+			if failure and failure ~= "cancelled" then
+				Notify(tostring(failure), vim.log.levels.ERROR)
 			end
-			State.expanded[parent] = true
-			State.expanded[path] = true
-		else
-			local fd, open_err = uv.fs_open(path, "wx", 420)
-			if not fd then
-				Notify("Could not create file: " .. tostring(open_err), vim.log.levels.ERROR)
-				return
-			end
-			uv.fs_close(fd)
-			State.expanded[parent] = true
+			return
 		end
-		Refresh()
-		local line = State.line_by_path[Normalize_Path(path)]
-		if line and State.window and vim.api.nvim_win_is_valid(State.window) then
-			vim.api.nvim_win_set_cursor(State.window, { line, 0 })
-		end
-		Notify((kind == "file" and "Created file: " or "Created folder: ") .. input)
+		local created_path = path_or_error
+		Reveal_Created_Path(kind, created_path)
+		Notify((kind == "file" and "Created file: " or "Created folder: ") .. tostring(input))
 	end)
+	if not input_ok then
+		Notify("Could not open input prompt: " .. tostring(input_error), vim.log.levels.ERROR)
+	end
 end
 
 local Initialize_Git
@@ -589,15 +552,16 @@ end
 Initialize_Git = function()
 	if State.git.available then
 		Notify("Git is already initialized on branch " .. (State.git.branch or "?"))
-		return
+		return true
 	end
 	local output, err = Git_Command({ "init" })
 	if not output then
 		Notify("Git init failed: " .. tostring(err), vim.log.levels.ERROR)
-		return
+		return false, err
 	end
 	Refresh()
 	Notify("Initialized Git repository")
+	return true
 end
 
 local function Close_Panel()
@@ -732,6 +696,21 @@ end
 
 function Dashboard.Refresh()
 	Refresh()
+end
+
+function Dashboard.Create(kind, input)
+	local ok, path, err = Filesystem.Create(State.root, kind, input)
+	if ok then Reveal_Created_Path(kind, path) end
+	return ok, path, err
+end
+
+function Dashboard.Initialize_Git()
+	return Initialize_Git()
+end
+
+function Dashboard.Cycle_Sort()
+	Cycle_Sort()
+	return SORT_MODES[State.sort_mode]
 end
 
 function Dashboard.Close()

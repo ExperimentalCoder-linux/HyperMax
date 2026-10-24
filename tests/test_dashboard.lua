@@ -160,6 +160,10 @@ Test("Dashboard: dashboard can reopen after its buffer is deleted", function()
 	end
 	Assert(editor_window ~= nil, "Dashboard should leave an editor window beside the panel")
 	vim.api.nvim_set_current_win(editor_window)
+	-- Neovim will keep a buffer alive while a window still displays it.
+	-- Replace the panel's buffer first, then verify the old one can be wiped.
+	local replacement_buffer = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_win_set_buf(old_window, replacement_buffer)
 	vim.api.nvim_buf_delete(old_buffer, { force = true })
 
 	Assert(not vim.api.nvim_buf_is_valid(old_buffer), "Old dashboard buffer should be deleted")
@@ -167,6 +171,9 @@ Test("Dashboard: dashboard can reopen after its buffer is deleted", function()
 	local reopened, reopen_err = pcall(Dashboard.Open, Root)
 	Assert(reopened, "Dashboard should reopen after deletion: " .. tostring(reopen_err))
 	Assert(vim.api.nvim_buf_is_valid(vim.api.nvim_get_current_buf()), "Current buffer should be valid after reopening")
+	if vim.api.nvim_buf_is_valid(replacement_buffer) then
+		pcall(vim.api.nvim_buf_delete, replacement_buffer, { force = true })
+	end
 
 	Remove_Test_Directory(Root)
 end)
@@ -175,30 +182,19 @@ Test("Dashboard: create files and folders and cycle sort modes", function()
 	local Root = Create_Test_Directory()
 	local Dashboard = require("hypermax.dashboard")
 	Assert(Dashboard.Open(Root), "Dashboard should open")
-	local state = Dashboard.Get_State()
-	vim.api.nvim_set_current_win(state.window)
 
-	local original_input = vim.ui.input
-	local next_input = "src/created.c"
-	vim.ui.input = function(_, callback) callback(next_input) end
-	local ok_file, err_file = pcall(function()
-		vim.api.nvim_feedkeys("a", "x", false)
-	end)
-	vim.ui.input = function(_, callback) callback("src/new_folder") end
-	local ok_folder, err_folder = pcall(function()
-		vim.api.nvim_feedkeys("A", "x", false)
-	end)
-	vim.ui.input = original_input
+	local ok_file, file_path, file_err = Dashboard.Create("file", "src/created.c")
+	Assert(ok_file, "Dashboard should create a file: " .. tostring(file_err))
+	Assert(vim.fn.filereadable(file_path) == 1, "Dashboard should create a file")
 
-	Assert(ok_file, "File creation mapping failed: " .. tostring(err_file))
-	Assert(ok_folder, "Folder creation mapping failed: " .. tostring(err_folder))
-	Assert(vim.fn.filereadable(Root .. "/src/created.c") == 1, "Dashboard should create a file")
-	Assert(vim.fn.isdirectory(Root .. "/src/new_folder") == 1, "Dashboard should create a folder")
+	local ok_folder, folder_path, folder_err = Dashboard.Create("folder", "src/new_folder")
+	Assert(ok_folder, "Dashboard should create a folder: " .. tostring(folder_err))
+	Assert(vim.fn.isdirectory(folder_path) == 1, "Dashboard should create a folder")
 
-	local old_mode = state.sort_mode
-	vim.api.nvim_set_current_win(state.window)
-	vim.api.nvim_feedkeys("s", "x", false)
-	Assert(state.sort_mode ~= old_mode, "Sort key should cycle to the next sorting mode")
+	local old_mode = Dashboard.Get_State().sort_mode
+	local next_mode = Dashboard.Cycle_Sort()
+	Assert(Dashboard.Get_State().sort_mode ~= old_mode, "Sort key should cycle to the next sorting mode")
+	Assert(type(next_mode) == "string", "Sort mode should be a name")
 	Remove_Test_Directory(Root)
 end)
 
