@@ -146,4 +146,68 @@ function Filesystem.Create(root, kind, input)
 	return true, path
 end
 
+
+local function Is_Protected_Relative(relative)
+	for part in relative:gsub("\\", "/"):gmatch("[^/]+") do
+		if part == ".hmc" or part == ".git" then return true end
+	end
+	return false
+end
+
+local function Relative_Path(root, full)
+	local normalized_root, normalized_full = Normalize(root), Normalize(full)
+	if not normalized_root or not normalized_full or not Is_Within(normalized_root, normalized_full) then return nil end
+	return normalized_full:sub(#normalized_root + 2)
+end
+
+function Filesystem.Move(root, source_input, destination_input)
+	if type(root) ~= "string" or root == "" then return false, nil, "Project root is not set" end
+	if type(source_input) ~= "string" or vim.trim(source_input) == "" then return false, nil, "Source path is required" end
+	if type(destination_input) ~= "string" or vim.trim(destination_input) == "" then return false, nil, "Destination path is required" end
+	local source, source_error = Filesystem.Safe_Child(root, source_input)
+	if not source then return false, nil, source_error end
+	local destination, destination_error = Filesystem.Safe_Child(root, destination_input)
+	if not destination then return false, nil, destination_error end
+	local source_relative = Relative_Path(root, source)
+	local destination_relative = Relative_Path(root, destination)
+	if not source_relative or not destination_relative then return false, nil, "Paths must remain inside the project" end
+	if Is_Protected_Relative(source_relative) or Is_Protected_Relative(destination_relative) then
+		return false, nil, "Git and HyperMax metadata paths cannot be moved from the dashboard"
+	end
+	local source_stat = uv.fs_lstat(source)
+	if not source_stat then return false, nil, "Source does not exist: " .. source_input end
+	if source == destination then return false, nil, "Source and destination are the same path" end
+	if uv.fs_lstat(destination) then return false, nil, "Destination already exists: " .. destination_input end
+	if source_stat.type == "directory" and Is_Within(source, destination) then
+		return false, nil, "A folder cannot be moved into itself or one of its descendants"
+	end
+	local parent = Normalize(vim.fn.fnamemodify(destination, ":h"))
+	local parent_stat = parent and uv.fs_stat(parent)
+	if not parent_stat or parent_stat.type ~= "directory" then
+		return false, nil, "Destination folder does not exist: " .. tostring(parent)
+	end
+	local ok, err = uv.fs_rename(source, destination)
+	if not ok then return false, nil, "Move failed: " .. tostring(err) end
+	return true, destination
+end
+
+function Filesystem.Delete(root, input)
+	if type(root) ~= "string" or root == "" then return false, "Project root is not set" end
+	if type(input) ~= "string" or vim.trim(input) == "" then return false, "Path is required" end
+	local path, path_error = Filesystem.Safe_Child(root, input)
+	if not path then return false, path_error end
+	local relative = Relative_Path(root, path)
+	if not relative then return false, "Path must be inside the project" end
+	if Is_Protected_Relative(relative) then return false, "Git and HyperMax metadata cannot be deleted from the dashboard" end
+	if not uv.fs_lstat(path) then return false, "Path does not exist: " .. input end
+	local ok, result = pcall(vim.fn.delete, path, "rf")
+	if not ok or result ~= 0 then return false, "Delete failed: " .. tostring(result) end
+	return true
+end
+
+function Filesystem.Exists(root, input)
+	local path = Filesystem.Safe_Child(root, input)
+	return path ~= nil and uv.fs_lstat(path) ~= nil
+end
+
 return Filesystem

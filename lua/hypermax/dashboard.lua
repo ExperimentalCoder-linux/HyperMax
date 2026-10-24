@@ -178,7 +178,8 @@ local function Build_Tree(directory, depth, counter)
 			break
 		end
 
-		if not (kind == "directory" and IGNORED_DIRECTORIES[name]) then
+		local hidden_hmc_backup = name:match("^%.hmc%.backup%-") ~= nil
+		if not hidden_hmc_backup and not (kind == "directory" and IGNORED_DIRECTORIES[name]) then
 			if kind == "directory" or kind == "file" then
 				local path = Join(directory, name)
 				local stat = uv.fs_stat(path) or {}
@@ -347,6 +348,9 @@ local function Render()
 	Add("  ────────────────────────────────")
 	Add("  Enter  Open / toggle folder")
 	Add("  a      New file   A  New folder")
+	Add("  R      Rename / move selected item")
+	Add("  x      Cut item   p  Paste into folder")
+	Add("  d      Delete item (confirmation)")
 	Add("  s      Cycle sort order")
 	Add("  g      Git menu    G  Init Git")
 	Add("  ? + -  Git markers: modified/untracked/added")
@@ -504,6 +508,77 @@ local function Create_Item(kind)
 	end
 end
 
+local function Relative_Path(path)
+	local root = Normalize_Path(State.root)
+	local full = Normalize_Path(path)
+	if not root or not full or not Filesystem.Is_Within(root, full) then return nil end
+	return full:sub(#root + 2)
+end
+
+local function Rename_Selected()
+	local entry = Get_Selected_Item()
+	if not entry then Notify("Select a file or folder first", vim.log.levels.WARN); return end
+	local old_relative = Relative_Path(entry.path)
+	if not old_relative then Notify("Selected path is outside the project", vim.log.levels.ERROR); return end
+	vim.ui.input({ prompt = "Rename / move to project-relative path:", default = old_relative }, function(input)
+		if not input or vim.trim(input) == "" then return end
+		local ok, destination, err = Filesystem.Move(State.root, old_relative, input)
+		if not ok then Notify("Rename/move failed: " .. tostring(err), vim.log.levels.ERROR); return end
+		if entry.type == "directory" then State.expanded[entry.path] = nil; State.expanded[destination] = true end
+		Reveal_Created_Path(entry.type == "directory" and "folder" or "file", destination)
+		Notify("Moved to " .. tostring(input))
+	end)
+end
+
+local function Cut_Selected()
+	local entry = Get_Selected_Item()
+	if not entry then Notify("Select a file or folder first", vim.log.levels.WARN); return end
+	local relative = Relative_Path(entry.path)
+	if not relative then Notify("Selected path is outside the project", vim.log.levels.ERROR); return end
+	State.cut_path = relative
+	Notify("Cut: " .. relative .. " — navigate to a destination and press p")
+end
+
+local function Paste_Cut()
+	if not State.cut_path then Notify("Nothing has been cut", vim.log.levels.WARN); return end
+	local source = State.cut_path
+	local name = source:match("([^/]+)$")
+	vim.ui.input({ prompt = "Destination folder (relative; empty = project root):", default = "" }, function(input)
+		if input == nil then return end
+		input = vim.trim(input)
+		local destination_directory = State.root
+		if input ~= "" then
+			local full, path_error = Filesystem.Safe_Child(State.root, input)
+			if not full then Notify(tostring(path_error), vim.log.levels.ERROR); return end
+			local stat = uv.fs_stat(full)
+			if not stat or stat.type ~= "directory" then Notify("Destination is not an existing folder: " .. input, vim.log.levels.ERROR); return end
+			destination_directory = full
+		end
+		local target = destination_directory == State.root and name or (input .. "/" .. name)
+		local ok, destination, err = Filesystem.Move(State.root, source, target)
+		if not ok then Notify("Paste failed: " .. tostring(err), vim.log.levels.ERROR); return end
+		State.cut_path = nil
+		Reveal_Created_Path(Is_Directory(destination) and "folder" or "file", destination)
+		Notify("Moved to " .. target)
+	end)
+end
+
+local function Delete_Selected()
+	local entry = Get_Selected_Item()
+	if not entry then Notify("Select a file or folder first", vim.log.levels.WARN); return end
+	local relative = Relative_Path(entry.path)
+	if not relative then Notify("Selected path is outside the project", vim.log.levels.ERROR); return end
+	vim.ui.select({ "Delete permanently", "Cancel" }, { prompt = "Delete " .. relative .. "?" }, function(choice)
+		if choice ~= "Delete permanently" then return end
+		local ok, err = Filesystem.Delete(State.root, relative)
+		if not ok then Notify("Delete failed: " .. tostring(err), vim.log.levels.ERROR); return end
+		if State.cut_path == relative or (State.cut_path and State.cut_path:sub(1, #relative + 1) == relative .. "/") then State.cut_path = nil end
+		State.expanded[entry.path] = nil
+		Refresh()
+		Notify("Deleted " .. relative)
+	end)
+end
+
 local Initialize_Git
 
 local function Run_Git_Terminal(action)
@@ -585,6 +660,10 @@ local function Set_Keymaps(buf)
 	Map("<CR>", Open_Selected, "HyperMax: open file or toggle folder")
 	Map("a", function() Create_Item("file") end, "HyperMax: create file")
 	Map("A", function() Create_Item("folder") end, "HyperMax: create folder")
+	Map("R", Rename_Selected, "HyperMax: rename or move selected item")
+	Map("x", Cut_Selected, "HyperMax: cut selected file or folder")
+	Map("p", Paste_Cut, "HyperMax: paste cut file or folder")
+	Map("d", Delete_Selected, "HyperMax: delete selected file or folder")
 	Map("s", Cycle_Sort, "HyperMax: cycle file sorting")
 	Map("g", Show_Git_Menu, "HyperMax: Git actions")
 	Map("G", Initialize_Git, "HyperMax: initialize Git")
@@ -652,6 +731,9 @@ function Dashboard.Open(project_root)
 	Define_Highlights()
 
 	local existing_window = State.window and vim.api.nvim_win_is_valid(State.window)
+	if Normalize_Path(State.root or "") ~= Normalize_Path(project_root) then
+		State.cut_path = nil
+	end
 
 	State.root = project_root
 	State.metadata = metadata
@@ -692,6 +774,29 @@ end
 
 function Dashboard.Open_Current_Project()
 	return Dashboard.Open(vim.fn.getcwd())
+end
+
+function Dashboard.Convert_Folder(root)
+	root = vim.fn.fnamemodify(vim.fn.expand(root or vim.fn.getcwd()), ":p")
+	local ok, result = Project_Config.Convert_Folder(root, { name = vim.fs.basename(root) })
+	if not ok then return false, result end
+	State.cut_path = nil
+	Dashboard.Open(root)
+	return true, result
+end
+
+function Dashboard.Undo_Conversion(root)
+	root = Dashboard.Find_Project_Root(root or vim.fn.getcwd()) or vim.fn.fnamemodify(root or vim.fn.getcwd(), ":p")
+	local ok, result = Project_Config.Undo_Conversion(root)
+	if ok and State.root == root then Close_Panel() end
+	return ok, result
+end
+
+function Dashboard.Scrape(root)
+	root = Dashboard.Find_Project_Root(root or vim.fn.getcwd()) or vim.fn.fnamemodify(root or vim.fn.getcwd(), ":p")
+	local ok, result = Project_Config.Scrape(root)
+	if ok and State.root == root then Close_Panel() end
+	return ok, result
 end
 
 function Dashboard.Refresh()

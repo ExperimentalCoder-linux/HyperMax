@@ -109,6 +109,14 @@ When a HyperMax project is open, its persistent sidebar supports these normal-mo
 
 Git decorations show untracked (`?`), added (`+`), modified (`●`), deleted (`−`), and renamed (`»`) files. Date sorting uses filesystem timestamps; on systems/filesystems that do not expose a birth time, the created-date sort falls back to the file's change time. New paths must stay inside the project, and existing files/folders are never overwritten.
 
+### Folder conversion shortcuts
+
+- `<leader>+C` or `:HyperMaxConvert [directory]` converts an existing folder into a HyperMax project without changing its source files.
+- `<leader>+u` or `:HyperMaxUndoConversion [directory]` reverses only a conversion created by HyperMax.
+- `<leader>+X` or `:HyperMaxScrape [directory]` removes HyperMax metadata from a project while preserving a `.hmc.backup-*` directory. This is useful when a folder should no longer be treated as a HyperMax project.
+
+The dashboard supports `R` to rename/move an item, `x` to cut, `p` to paste into a project-relative folder, and `d` to delete after confirmation. `.git` and `.hmc` metadata paths are protected from these file operations. Legacy `.hmc` layouts such as `basic.json`, `project.json`, `settings.json`, and `files.json` are read for compatibility.
+
 ## Commands
 
 | Command | Action |

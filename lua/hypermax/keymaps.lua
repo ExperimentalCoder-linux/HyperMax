@@ -62,11 +62,10 @@ local function Run_Health_Check()
 			)
 
 			if result.stderr and result.stderr ~= "" then
-				vim.list_extend(output, {
-					"",
-					"Errors:",
-					result.stderr,
-				})
+				vim.list_extend(output, { "", "Errors:" })
+				-- nvim_buf_set_lines accepts one line per array item. Never insert
+				-- the complete stderr string as one item: it may contain newlines.
+				vim.list_extend(output, vim.split(result.stderr, "\n", { plain = true, trimempty = true }))
 			end
 
 			-- Display results in a scratch buffer.
@@ -107,6 +106,47 @@ local function Map(key, action, description)
 end
 
 -- =========================================================
+-- PROJECT CONVERSION COMMANDS
+-- =========================================================
+
+local function Current_Path(argument)
+	return vim.fn.fnamemodify(vim.fn.expand((argument and argument ~= "") and argument or vim.fn.getcwd()), ":p")
+end
+
+local function Confirm_Action(prompt, action)
+	vim.ui.select({ "Confirm", "Cancel" }, { prompt = prompt }, function(choice)
+		if choice ~= "Confirm" then return end
+		local ok, result = action()
+		if not ok then
+			vim.notify("HyperMax: " .. tostring(result), vim.log.levels.ERROR)
+		else
+			vim.notify("HyperMax: " .. tostring(result or "Operation completed"), vim.log.levels.INFO)
+		end
+	end)
+end
+
+local function Convert_Folder(path)
+	local Dashboard = require("hypermax.dashboard")
+	local ok, result = Dashboard.Convert_Folder(path)
+	if not ok then return false, result end
+	return true, "Converted folder to HyperMax project: " .. path
+end
+
+local function Undo_Conversion(path)
+	local Dashboard = require("hypermax.dashboard")
+	local ok, result = Dashboard.Undo_Conversion(path)
+	if not ok then return false, result end
+	return true, "Conversion undone. Metadata backup: " .. tostring(result)
+end
+
+local function Scrape_Project(path)
+	local Dashboard = require("hypermax.dashboard")
+	local ok, result = Dashboard.Scrape(path)
+	if not ok then return false, result end
+	return true, "Project metadata removed. Backup: " .. tostring(result)
+end
+
+-- =========================================================
 -- SETUP
 -- =========================================================
 
@@ -117,6 +157,22 @@ function Keymaps.Setup(Project, Settings, Layouts)
 	vim.api.nvim_create_user_command("HyperMaxHealthCheck", Run_Health_Check, {
 		desc = "Run HyperMax health checks",
 	})
+	for _, command in ipairs({ "HyperMaxConvert", "HyperMaxUndoConversion", "HyperMaxScrape" }) do
+		pcall(vim.api.nvim_del_user_command, command)
+	end
+	vim.api.nvim_create_user_command("HyperMaxConvert", function(opts)
+		local path = Current_Path(opts.args)
+		local ok, result = Convert_Folder(path)
+		vim.notify("HyperMax: " .. tostring(result), ok and vim.log.levels.INFO or vim.log.levels.ERROR)
+	end, { nargs = "?", complete = "dir", desc = "Convert an existing folder into a HyperMax project" })
+	vim.api.nvim_create_user_command("HyperMaxUndoConversion", function(opts)
+		local path = Current_Path(opts.args)
+		Confirm_Action("Undo folder conversion? Existing files will remain; .hmc will be backed up", function() return Undo_Conversion(path) end)
+	end, { nargs = "?", complete = "dir", desc = "Undo a HyperMax folder conversion" })
+	vim.api.nvim_create_user_command("HyperMaxScrape", function(opts)
+		local path = Current_Path(opts.args)
+		Confirm_Action("Remove HyperMax metadata from this project? A backup will be kept", function() return Scrape_Project(path) end)
+	end, { nargs = "?", complete = "dir", desc = "Remove HyperMax metadata from a project" })
 
 	-- =====================================================
 	-- MAIN MENU
@@ -131,6 +187,9 @@ function Keymaps.Setup(Project, Settings, Layouts)
 			"Open last project",
 			"List layouts",
 			"Health Check",
+			"Convert current folder into project",
+			"Undo folder conversion",
+			"Remove project metadata (scrape)",
 		}, {
 			prompt = "HyperMax",
 		}, function(choice)
@@ -192,6 +251,16 @@ function Keymaps.Setup(Project, Settings, Layouts)
 				end)
 			elseif choice == "Health Check" then
 				Run_Health_Check()
+			elseif choice == "Convert current folder into project" then
+				local path = Current_Path(nil)
+				local ok, result = Convert_Folder(path)
+				vim.notify("HyperMax: " .. tostring(result), ok and vim.log.levels.INFO or vim.log.levels.ERROR)
+			elseif choice == "Undo folder conversion" then
+				local path = Current_Path(nil)
+				Confirm_Action("Undo folder conversion? Existing files will remain; .hmc will be backed up", function() return Undo_Conversion(path) end)
+			elseif choice == "Remove project metadata (scrape)" then
+				local path = Current_Path(nil)
+				Confirm_Action("Remove HyperMax metadata? A backup will be kept", function() return Scrape_Project(path) end)
 			end
 		end)
 	end, "Open menu")
@@ -247,6 +316,20 @@ function Keymaps.Setup(Project, Settings, Layouts)
 	Map("h", function()
 		Run_Health_Check()
 	end, "Health check")
+
+	Map("C", function()
+		local path = Current_Path(nil)
+		local ok, result = Convert_Folder(path)
+		vim.notify("HyperMax: " .. tostring(result), ok and vim.log.levels.INFO or vim.log.levels.ERROR)
+	end, "Convert current folder into project")
+	Map("u", function()
+		local path = Current_Path(nil)
+		Confirm_Action("Undo folder conversion? Existing files will remain; .hmc will be backed up", function() return Undo_Conversion(path) end)
+	end, "Undo folder conversion")
+	Map("X", function()
+		local path = Current_Path(nil)
+		Confirm_Action("Remove HyperMax metadata? A backup will be kept", function() return Scrape_Project(path) end)
+	end, "Scrape project metadata")
 end
 
 return Keymaps

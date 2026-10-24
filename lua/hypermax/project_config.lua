@@ -237,6 +237,11 @@ local function Default_Basics(metadata)
 		git = {
 			enabled = git_enabled,
 		},
+		conversion = metadata.conversion and {
+			kind = metadata.conversion.kind or "folder_conversion",
+			created_by = "hypermax",
+			created_at = os.time(),
+		} or nil,
 	}
 end
 
@@ -349,6 +354,7 @@ function Project_Config.Create(project_root, metadata)
 		local saved, save_err = Write_JSON(item.path, item.data)
 
 		if not saved then
+			pcall(vim.fn.delete, paths.directory, "rf")
 			return false, save_err
 		end
 	end
@@ -356,6 +362,7 @@ function Project_Config.Create(project_root, metadata)
 	local history_saved, history_err = Write_File(paths.history, HISTORY_HEADER)
 
 	if not history_saved then
+		pcall(vim.fn.delete, paths.directory, "rf")
 		return false, history_err
 	end
 
@@ -366,6 +373,74 @@ end
 -- LOAD PROJECT CONFIGURATION
 -- =========================================================
 
+local function Read_Legacy_Basics(paths)
+	local candidates = {
+		paths.basics,
+		Join(paths.directory, "basic.json"),
+		Join(paths.directory, "project.json"),
+		Join(paths.directory, "metadata.json"),
+		Join(paths.directory, "project_config.json"),
+		Join(paths.directory, "hypermax.json"),
+	}
+	local empty_data
+	for _, path in ipairs(candidates) do
+		if vim.fn.filereadable(path) == 1 then
+			local data, err = Read_JSON(path, {})
+			if not data then return nil, err end
+			if type(data.project) ~= "table" or next(data.project) == nil then
+				local project_keys = { "name", "root", "language", "manager", "creator", "created_at", "entry_file", "entry_function", "entry_point", "project_name", "project_root" }
+				local project = {}
+				for _, key in ipairs(project_keys) do
+					if data[key] ~= nil then project[key] = data[key] end
+				end
+				project.name = project.name or data.project_name
+				project.root = project.root or data.project_root
+				if next(project) then data.project = project end
+			end
+			if type(data.project) == "table" and next(data.project) then
+				data.project.entry_point = data.project.entry_point or {
+					file = data.project.entry_file or data.entry_file or "",
+					["function"] = data.project.entry_function or data.entry_function or "main",
+				}
+				data.git = data.git or { enabled = vim.fn.isdirectory(vim.fn.fnamemodify(paths.directory, ":h") .. "/.git") == 1 }
+				return data
+			end
+			empty_data = data
+		end
+	end
+	return empty_data or {}, nil
+end
+
+local function Read_Legacy_Config(paths)
+	if vim.fn.filereadable(paths.config) == 1 then
+		return Read_JSON(paths.config, Default_Project_Config())
+	end
+	for _, path in ipairs({ Join(paths.directory, "settings.json"), Join(paths.directory, "options.json") }) do
+		if vim.fn.filereadable(path) == 1 then
+			local data, err = Read_JSON(path, Default_Project_Config())
+			if not data then return nil, err end
+			if type(data.settings) ~= "table" then data = { version = data.version or DATA_VERSION, settings = data } end
+			return data
+		end
+	end
+	return Default_Project_Config(), nil
+end
+
+local function Read_Legacy_Layout(paths)
+	local candidates = { paths.layout, Join(paths.directory, "tree.json"), Join(paths.directory, "files.json"), Join(paths.directory, "project_layout.json") }
+	for _, path in ipairs(candidates) do
+		if vim.fn.filereadable(path) == 1 then
+			local data, err = Read_JSON(path, { version = DATA_VERSION, entries = {} })
+			if not data then return nil, err end
+			if type(data.entries) ~= "table" and type(data.files) == "table" then data.entries = data.files end
+			data.entries = data.entries or {}
+			data.version = data.version or DATA_VERSION
+			return data
+		end
+	end
+	return { version = DATA_VERSION, entries = {} }, nil
+end
+
 function Project_Config.Load(project_root)
 	project_root = vim.fn.fnamemodify(project_root, ":p")
 
@@ -375,12 +450,9 @@ function Project_Config.Load(project_root)
 		return nil, "No .hmc directory exists in this project"
 	end
 
-	local basics, basics_err = Read_JSON(paths.basics, {})
-	local config, config_err = Read_JSON(paths.config, Default_Project_Config())
-	local layout, layout_err = Read_JSON(paths.layout, {
-		version = DATA_VERSION,
-		entries = {},
-	})
+	local basics, basics_err = Read_Legacy_Basics(paths)
+	local config, config_err = Read_Legacy_Config(paths)
+	local layout, layout_err = Read_Legacy_Layout(paths)
 
 	if not basics then
 		return nil, basics_err
@@ -401,6 +473,50 @@ function Project_Config.Load(project_root)
 		config = config,
 		layout = layout,
 	}
+end
+
+-- =========================================================
+-- PROJECT CONVERSION / SCRAPING
+-- =========================================================
+
+function Project_Config.Convert_Folder(project_root, metadata)
+	project_root = vim.fn.fnamemodify(vim.fn.expand(project_root or ""), ":p")
+	if project_root == "" or vim.fn.isdirectory(project_root) ~= 1 then
+		return false, "Choose an existing folder to convert"
+	end
+	if Project_Config.Exists(project_root) then return false, "Folder is already a HyperMax project" end
+	metadata = vim.deepcopy(metadata or {})
+	metadata.name = metadata.name or vim.fs.basename(project_root)
+	metadata.language = metadata.language or "unknown"
+	metadata.manager = metadata.manager or "native"
+	metadata.entry_file = metadata.entry_file or ""
+	metadata.entry_function = metadata.entry_function or "main"
+	metadata.conversion = { kind = "folder_conversion" }
+	return Project_Config.Create(project_root, metadata)
+end
+
+local function Remove_HMC(project_root, require_conversion)
+	project_root = vim.fn.fnamemodify(vim.fn.expand(project_root or ""), ":p")
+	local loaded, err = Project_Config.Load(project_root)
+	if not loaded then return false, err end
+	if require_conversion and not (loaded.basics.conversion and loaded.basics.conversion.kind == "folder_conversion") then
+		return false, "This project was not created by folder conversion; refusing to undo it"
+	end
+	local directory = loaded.paths.directory
+	local stat = uv.fs_lstat(directory)
+	if not stat or stat.type ~= "directory" then return false, "The .hmc metadata path is not a real directory" end
+	local backup = directory .. ".backup-" .. os.date("%Y%m%d-%H%M%S")
+	local renamed, rename_err = uv.fs_rename(directory, backup)
+	if not renamed then return false, "Could not safely back up .hmc: " .. tostring(rename_err) end
+	return true, backup
+end
+
+function Project_Config.Undo_Conversion(project_root)
+	return Remove_HMC(project_root, true)
+end
+
+function Project_Config.Scrape(project_root)
+	return Remove_HMC(project_root, false)
 end
 
 -- =========================================================
