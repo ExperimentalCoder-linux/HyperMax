@@ -824,7 +824,7 @@ local function Open_Project(root, entry, options)
 		end
 	end
 
-	vim.cmd("tcd " .. vim.fn.fnameescape(root))
+	Dashboard.Open(root)
 end
 
 -- =========================================================
@@ -882,7 +882,6 @@ local function Create_Project(options, language_id, manager_id, root, project_na
 	end
 
 	Open_Project(root, entry, options)
-	Dashboard.Open(root)
 end
 
 -- =========================================================
@@ -1162,8 +1161,8 @@ function Project.List()
 		if not project then
 			return
 		end
-
 		vim.cmd("tcd " .. vim.fn.fnameescape(project.path))
+		Dashboard.Open(project.path)
 		Notify("Opened project: " .. project.path)
 	end)
 end
@@ -1176,71 +1175,34 @@ function Project.Open_Last()
 	local options = Config.options or {}
 	local path = options.last_project_path
 
+	-- Check whether a last project has been saved.
 	if type(path) ~= "string" or path == "" then
 		Notify("No last project has been saved yet.", vim.log.levels.WARN)
 		return
 	end
 
+	-- Convert the saved path into an absolute path.
 	path = vim.fn.fnamemodify(vim.fn.expand(path), ":p")
 
+	-- Check whether the project directory still exists.
 	if not Is_Directory(path) then
 		Notify("Last project directory no longer exists: " .. path, vim.log.levels.ERROR)
 		return
 	end
 
-	-- Change the working directory for the current tab.
-	Dashboard.Open(path)
-
-	-- Find a sensible starting file.
-	local candidates = {
-		"main.c",
-		"main.cpp",
-		"main.cc",
-		"main.py",
-		"main.lua",
-		"Main.java",
-		"index.html",
-		"index.js",
-		"index.ts",
-		"src/main.c",
-		"src/main.cpp",
-		"src/main.py",
-		"src/main.lua",
-	}
-
-	local start_file = nil
-
-	for _, relative_path in ipairs(candidates) do
-		local candidate = path .. "/" .. relative_path
-
-		if vim.fn.filereadable(candidate) == 1 then
-			start_file = candidate
-			break
-		end
-	end
-
-	-- Open the selected file, or show the project directory if
-	-- no recognized starting file exists.
-	if start_file then
-		vim.cmd("edit " .. vim.fn.fnameescape(start_file))
-	else
-		-- If the current buffer is empty and unnamed, avoid
-		-- leaving the user looking at an unrelated empty buffer.
-		local current = vim.api.nvim_get_current_buf()
-		local empty_buffer = vim.api.nvim_buf_is_loaded(current)
-			and vim.api.nvim_buf_get_name(current) == ""
-			and vim.bo[current].buftype == ""
-			and not vim.bo[current].modified
-
-		if empty_buffer then
-			vim.cmd("enew")
-		end
-
-		Notify("No recognized main file found. Project directory: " .. path, vim.log.levels.INFO)
+	-- Check whether this is a valid HyperMax project.
+	if not Dashboard.Is_Project(path) then
+		Notify("Last project is not a valid HyperMax project: " .. path, vim.log.levels.ERROR)
 		return
 	end
 
-	Notify("Opened project: " .. path)
+	-- Switch to the project directory.
+	vim.cmd("tcd " .. vim.fn.fnameescape(path))
+
+	-- Always open the dashboard instead of a source file.
+	if Dashboard.Open(path) then
+		Notify("Opened project dashboard: " .. path)
+	end
 end
 
 -- =========================================================

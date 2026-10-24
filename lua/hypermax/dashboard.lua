@@ -342,6 +342,31 @@ function Dashboard.Is_Project(root)
 	return Is_Directory(Join(root, ".hmc"))
 end
 
+function Dashboard.Find_Project_Root(path)
+	path = vim.fn.fnamemodify(vim.fn.expand(path or vim.fn.getcwd()), ":p")
+
+	-- If a file was supplied, start searching from its directory.
+	if Is_File(path) then
+		path = vim.fn.fnamemodify(path, ":h")
+	end
+
+	while path and path ~= "" do
+		if Dashboard.Is_Project(path) then
+			return path
+		end
+
+		local parent = vim.fn.fnamemodify(path, ":h")
+
+		if parent == path then
+			break
+		end
+
+		path = parent
+	end
+
+	return nil
+end
+
 function Dashboard.Open(project_root)
 	project_root = vim.fn.fnamemodify(vim.fn.expand(project_root or vim.fn.getcwd()), ":p")
 

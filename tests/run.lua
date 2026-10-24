@@ -1,156 +1,80 @@
-local Settings = require("hypermax.settings")
-local Layouts = require("hypermax.layouts")
-local Config = require("hypermax.config")
+-- =========================================================
+-- HYPERMAX TEST RUNNER
+-- =========================================================
 
-local Keymaps = {}
+local source = debug.getinfo(1, "S").source
 
-local function Run_Health_Check()
-	-- Find this file's location.
-	local source = debug.getinfo(1, "S").source
+if source:sub(1, 1) == "@" then
+	source = source:sub(2)
+end
 
-	if source:sub(1, 1) == "@" then
-		source = source:sub(2)
-	end
+local test_directory = vim.fs.dirname(vim.fn.fnamemodify(source, ":p"))
+local plugin_root = vim.fs.dirname(test_directory)
 
-	-- Find the plugin root.
-	local plugin_root = vim.fs.dirname(vim.fs.dirname(vim.fs.dirname(source)))
+-- Make the plugin and test helper files discoverable.
+vim.opt.rtp:prepend(plugin_root)
 
-	local test_file = plugin_root .. "/tests/run.lua"
+package.path = table.concat({
+	plugin_root .. "/?.lua",
+	plugin_root .. "/?/init.lua",
+	package.path,
+}, ";")
 
-	if vim.fn.filereadable(test_file) ~= 1 then
-		vim.notify("HyperMax: Could not find tests/run.lua\n" .. test_file, vim.log.levels.ERROR)
-		return
-	end
+-- Tests expect the repository root as the working directory.
+vim.fn.chdir(plugin_root)
 
-	-- Run tests in a separate, clean Neovim process.
-	vim.system({
-		vim.v.progpath,
-		"--headless",
-		"-u",
-		"NONE",
-		"--cmd",
-		"set rtp+=" .. plugin_root,
-		"-c",
-		"luafile " .. test_file,
-	}, {
-		cwd = plugin_root,
-		text = true,
-	}, function(result)
-		vim.schedule(function()
-			local output = {
-				"HyperMax Health Check",
-				"====================",
-				"",
-				"Exit code: " .. result.code,
-				"",
-			}
+local Test = require("tests.testlib")
 
-			vim.list_extend(
-				output,
-				vim.split(result.stdout or "", "\n", {
-					plain = true,
-					trimempty = true,
-				})
-			)
+-- =========================================================
+-- TEST SUITES
+-- =========================================================
 
-			if result.stderr and result.stderr ~= "" then
-				vim.list_extend(output, {
-					"",
-					"Errors:",
-					result.stderr,
-				})
-			end
+local test_files = {
+	"tests/test_file.lua",
+	"tests/test_connections.lua",
+	"tests/test_languages.lua",
+	"tests/test_managers.lua",
+	"tests/test_layout.lua",
+	"tests/test_progress.lua",
+}
 
-			-- Display the results in a new buffer.
-			vim.cmd("botright new")
-			vim.bo.buftype = "nofile"
-			vim.bo.bufhidden = "wipe"
-			vim.bo.swapfile = false
-			vim.bo.filetype = "text"
+-- =========================================================
+-- EXECUTE EACH TEST SUITE
+-- =========================================================
 
-			vim.api.nvim_buf_set_lines(0, 0, -1, false, output)
+print("")
+print("[INFO] HyperMax repository: " .. plugin_root)
+print("[INFO] Starting health checks...")
+print("")
 
-			vim.bo.modifiable = false
-			vim.notify(
-				"HyperMax health check finished (exit code " .. result.code .. ")",
-				result.code == 0 and vim.log.levels.INFO or vim.log.levels.ERROR
-			)
+for _, relative_path in ipairs(test_files) do
+	local full_path = plugin_root .. "/" .. relative_path
+	local chunk, load_error = loadfile(full_path)
+
+	if not chunk then
+		Test.Run("Load " .. relative_path, function()
+			error("Could not load test file:\n" .. tostring(load_error))
 		end)
-	end)
+	else
+		local ok, err = xpcall(chunk, debug.traceback)
+
+		if not ok then
+			Test.Run("Execute " .. relative_path, function()
+				error("Test file crashed:\n" .. tostring(err))
+			end)
+		end
+	end
 end
 
-local function Map(key, action, description)
-	vim.keymap.set("n", "<leader>+" .. key, action, {
-		desc = "HyperMax: " .. description,
-		silent = true,
-	})
+-- =========================================================
+-- FINAL RESULT AND PROCESS EXIT CODE
+-- =========================================================
+
+local success = Test.Finish()
+
+if success then
+	vim.cmd("qa!")
+else
+	-- A failed health check must return a non-zero exit code.
+	vim.cmd("cquit 1")
 end
-
-function Keymaps.Setup(Project, Settings, Layouts)
-	-- Main menu
-	Map("+", function()
-		vim.ui.select({
-			"Projects",
-			"Settings",
-			"Load layout",
-			"Save current project as layout",
-			"Open last project",
-			"Health Check",
-		}, {
-			prompt = "HyperMax",
-		}, function(choice)
-			if choice == "Projects" then
-				Project.Create()
-			elseif choice == "Settings" then
-				Settings.Open()
-			elseif choice == "Load layout" then
-				Project.Load_Layout()
-			elseif choice == "Save current project as layout" then
-				Project.Save_Layout()
-			elseif choice == "Open last project" then
-				Project.Open_Last()
-			elseif choice == "Health Check" then
-				Run_Health_Check()
-			end
-		end)
-	end, "Open menu")
-
-	-- Individual shortcuts
-	Map("p", function()
-		Project.List()
-	end, "project List")
-
-	Map("s", function()
-		Settings.Open()
-	end, "Settings")
-
-	Map("l", function()
-		Project.Load_Layout()
-	end, "Load layout")
-
-	Map("L", function()
-		Project.Save_Layout()
-	end, "Save current project as layout")
-
-	Map("o", function()
-		Project.Open_Last()
-	end, "Open last project")
-
-	Map("c", function()
-		vim.cmd("HyperMaxConfig")
-	end, "Show configuration")
-
-	Map("r", function()
-		vim.cmd("HyperMaxCreate")
-	end, "Create project using wizard")
-
-	Map("n", function()
-		Project.Create(Config.options)
-	end, "New Project")
-
-	Map("h", function()
-		vim.cmd("HyperMaxHealthCheck")
-	end, "Health Check")
-end
-
-return Keymaps

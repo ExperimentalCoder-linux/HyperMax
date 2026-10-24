@@ -49,25 +49,29 @@ function HyperMax.setup(options)
 	Config.setup(options)
 	Register_Commands()
 	Keymaps.Setup(Project, Settings, Layouts)
-	-- Automatically open the dashboard when Neovim starts
-	-- inside a HyperMax project, unless a file was specified.
+	-- Always open the dashboard when starting inside a HyperMax project.
 	vim.api.nvim_create_autocmd("VimEnter", {
-		group = vim.api.nvim_create_augroup("HyperMaxDashboard", { clear = true }),
+		group = vim.api.nvim_create_augroup("HyperMaxDashboard", {
+			clear = true,
+		}),
 		once = true,
 		callback = function()
-			if vim.fn.argc() > 0 then
-				return
+			local Dashboard = require("hypermax.dashboard")
+
+			-- First check the current working directory.
+			local root = Dashboard.Find_Project_Root(vim.fn.getcwd())
+
+			-- If needed, check the first file supplied to Neovim.
+			if not root and vim.fn.argc() > 0 then
+				root = Dashboard.Find_Project_Root(vim.fn.argv(0))
 			end
 
-			local Dashboard = require("hypermax.dashboard")
-			local root = vim.fn.getcwd()
-
-			if Dashboard.Is_Project(root) then
+			if root then
+				vim.cmd("tcd " .. vim.fn.fnameescape(root))
 				Dashboard.Open(root)
 			end
 		end,
 	})
-
 	return HyperMax
 end
 
