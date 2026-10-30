@@ -82,4 +82,24 @@ describe("HyperMax scoped command interface", function()
 		assert.is_false(called)
 		assert.is_true(#nvim.notifications > 0)
 	end)
+
+	it("does not replace a command owned by the user", function()
+		local callback = function() end
+		nvim.commands.HyperMax = {
+			callback = callback,
+			desc = "User-owned command",
+			options = { nargs = "*" },
+		}
+
+		assert.is_false(Commands.setup(Fake_API()))
+		assert.are.equal(callback, nvim.commands.HyperMax.callback)
+		assert.are.equal("User-owned command", nvim.commands.HyperMax.desc)
+	end)
+
+	it("registers its command again if it was removed", function()
+		assert.is_true(Commands.setup(Fake_API()))
+		nvim.commands.HyperMax = nil
+		assert.is_true(Commands.setup(Fake_API()))
+		assert.are.equal("HyperMax project and workspace commands", nvim.commands.HyperMax.desc)
+	end)
 end)

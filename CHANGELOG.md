@@ -2,12 +2,17 @@
 
 ## Unreleased
 
-- Added Busted unit specifications for configuration validation and scoped command completion/dispatch, while keeping the real-Neovim integration suite for editor and filesystem behavior.
-- Expanded CI to install and run Busted, lint unit specifications, and parse every Lua source, test, and spec file with Lua 5.1.
-- Added focused LuaCATS contracts for project diagnostics, floating-window options, and runtime helper functions.
-- Completed native Vim help documentation for all global configuration options and documented the configuration precedence and automatic initialization lifecycle.
-- Updated contributor guidance to require both unit and integration tests and to use SemVer for public API changes.
+## 0.7.1 — Runtime reliability and plugin compatibility
 
+- Guarded `:HyperMax` registration with both the Neovim user-command registry and `exists()` so an existing user or plugin command is never replaced; command registration can recover if the command is later removed.
+- Made the command-collision regression test verify that its test command is actually removed before creating a simulated user-owned command.
+- Improved pinned-task winbar project-root matching and title visibility in narrow windows; truncation now respects display-cell width for Unicode text.
+- Added regression coverage for preserving user changes to a winbar while a pinned-task overlay is active.
+- Added strict SemVer 2.0.0 validation, including rejection of leading zeroes in numeric prerelease identifiers, with Python unit tests.
+- Made release publication depend on release metadata, Lua 5.1 checks, Busted specifications, and a Neovim integration run passing.
+- Added Neovim compatibility CI coverage for 0.10.0, 0.11.7, 0.12.6, and nightly.
+- Added Busted unit specifications for configuration validation and scoped command completion/dispatch, while keeping the real-Neovim integration suite for editor and filesystem behavior.
+- Added focused LuaCATS contracts for project diagnostics, floating-window options, and runtime helper functions; expanded native Vim help and contributor documentation.
 
 ## 0.7.0 — Command API and mapping hardening
 

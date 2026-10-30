@@ -43,18 +43,13 @@ HyperMax is not claiming to replace every language-specific official tool or spe
 
 ### lazy.nvim
 
-To get the HyperMax working on your personal computer Enter this terminal command to make the HyperMax file
-
-```bash
-python3 -c "import os,pathlib; p=pathlib.Path(os.environ.get('LOCALAPPDATA', str(pathlib.Path.home() / '.config')) if os.name=='nt' else pathlib.Path.home()/'.config') / 'nvim' / 'lua' / 'plugins' / 'hypermax.lua'; p.parent.mkdir(parents=True,exist_ok=True); p.write_text('return {\n    {\n        \"ExperimentalCoder-linux/HyperMax\",\n        name = \"hypermax.nvim\",\n        lazy = false,\n        opts = {\n            project_dir = \"~/Code\",\n            create_missing_dir = true,\n            open_after_create = false,\n            default_language = \"c\",\n        },\n    },\n}\n'); print('Created:', p)"
-```
-
-This is the resulting file that will link your computer to the Hypermax startup
+Create `lua/plugins/hypermax.lua` in your Neovim configuration directory and add this plugin specification:
 
 ```lua
 {
     "ExperimentalCoder-linux/HyperMax",
     name = "hypermax.nvim",
+    main = "hypermax",
     lazy = false,
     opts = {
         project_dir = "~/Code",
@@ -67,7 +62,9 @@ This is the resulting file that will link your computer to the Hypermax startup
 
 HyperMax initializes automatically through its Neovim runtime entry point. The optional `setup()` call configures preferences only; it does not need to initialize the plugin. If you use the configuration above, avoid adding a second competing plugin specification for the same repository.
 
-**Required:** Neovim 0.10.0 or newer. HyperMax uses Neovim Lua APIs including `vim.ui.select`, `vim.ui.input`, JSON helpers, and filesystem functions. A working UI provider is needed for selection and input prompts; Neovim's built-in UI is sufficient, and UI plugins can customise it.
+**Required:** Neovim 0.10.0 or newer. HyperMax uses Neovim Lua APIs including `vim.ui.select`, `vim.ui.input`, JSON helpers, and filesystem functions. A working UI provider is needed for selection and input prompts; Neovim's built-in UI is sufficient, and UI plugins can customise it. The Lazy specification sets `main = "hypermax"` explicitly so module discovery works on case-sensitive filesystems.
+
+The CI suite checks the minimum supported release (0.10.0), the 0.11 and 0.12 stable lines, and the latest Neovim nightly. HyperMax targets Neovim's Lua 5.1 API and does not require LuaJIT-specific extensions.
 
 ## Quick start
 
@@ -146,7 +143,7 @@ HyperMax uses one scoped command with nested subcommands. Type `:HyperMax ` and 
 | `:HyperMax tutorial` | Open Essentials and Advanced tutorials. |
 | `:HyperMax health` | Run `:checkhealth hypermax`. |
 
-The layout-draft buffer also provides the buffer-local `:HyperMaxLayoutSave` and `:HyperMaxLayoutCancel` commands to validate/save or discard the current draft. These are scoped to the temporary layout buffer.
+The layout-draft buffer also provides the buffer-local `:HyperMaxLayoutSave` and `:HyperMaxLayoutCancel` commands to validate/save or discard the current draft. These are scoped to the temporary layout buffer. HyperMax never replaces an existing user command named `:HyperMax`; if that name is already in use, initialization continues and the plugin's `<Plug>` mappings and public Lua API remain available.
 
 **Command migration:** global per-action commands from earlier releases are no longer registered. Use the corresponding `:HyperMax` subcommand instead (for example, `:HyperMax project create`, `:HyperMax layout save`, or `:HyperMax history save`). The two layout-draft commands above remain buffer-local because they only apply while their draft buffer is open.
 

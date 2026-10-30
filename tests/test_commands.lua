@@ -117,22 +117,43 @@ Test.Run("HyperMax command completion ignores unknown command paths", function()
 	Test.Equal(0, #matches)
 end)
 
-pcall(vim.api.nvim_del_user_command, "HyperMax")
-
 Test.Run("HyperMax does not overwrite an existing user command", function()
-	vim.api.nvim_create_user_command("HyperMax", function() end, {
-		nargs = "*",
-		desc = "User-owned command",
-	})
+	local ok, err = xpcall(function()
+		-- The command created at the top of this suite is owned by HyperMax.
+		-- Remove it explicitly and verify the namespace is clear before creating
+		-- the simulated user command. A swallowed deletion error would make this
+		-- test accidentally inspect HyperMax's own command instead.
+		local commands_before = vim.api.nvim_get_commands({ builtin = false })
+		if commands_before.HyperMax then
+			vim.api.nvim_del_user_command("HyperMax")
+		end
+		Test.Nil(vim.api.nvim_get_commands({ builtin = false }).HyperMax,
+			"Test setup must remove the original HyperMax command")
 
-	-- Simulate a fresh module load while the user's command already exists.
-	package.loaded["hypermax.commands"] = nil
-	local Fresh_Commands = require("hypermax.commands")
-	Test.False(Fresh_Commands.setup(fake_api))
+		vim.api.nvim_create_user_command("HyperMax", function() end, {
+			nargs = "*",
+			desc = "User-owned command",
+		})
 
-	local registered = vim.api.nvim_get_commands({ builtin = false }).HyperMax
-	Test.Equal("User-owned command", registered.desc)
+		-- Simulate a fresh module load while the user's command already exists.
+		package.loaded["hypermax.commands"] = nil
+		local Fresh_Commands = require("hypermax.commands")
+		Test.False(Fresh_Commands.setup(fake_api))
+
+		local registered = vim.api.nvim_get_commands({ builtin = false }).HyperMax
+		Test.Not_Nil(registered)
+		Test.Equal("User-owned command", registered.desc)
+
+		-- Once the user removes the conflicting command, HyperMax can register
+		-- its own command normally.
+		vim.api.nvim_del_user_command("HyperMax")
+		Test.True(Fresh_Commands.setup(fake_api))
+		Test.Equal("HyperMax project and workspace commands",
+			vim.api.nvim_get_commands({ builtin = false }).HyperMax.desc)
+	end, debug.traceback)
+
 	pcall(vim.api.nvim_del_user_command, "HyperMax")
+	if not ok then error(err) end
 end)
 
 return true

@@ -25,6 +25,8 @@ local Commands = {}
 local command_tree
 ---@type boolean
 local command_registered = false
+local COMMAND_NAME = "HyperMax"
+local COMMAND_DESCRIPTION = "HyperMax project and workspace commands"
 
 ---@param message any
 ---@param level? integer
@@ -287,8 +289,6 @@ end
 
 ---@param node HyperMax.CommandSpec
 ---@param path string
----@param node HyperMax.CommandSpec
----@param path string
 local function Show_Usage(node, path)
 	local names = Sorted_Keys(node.subcommands or {})
 	local lines = {}
@@ -376,19 +376,40 @@ end
 ---@return boolean success Whether the HyperMax command was registered.
 function Commands.setup(api)
 	command_tree = Build_Tree(api)
+
+	-- Inspect the command namespace before registering. The exists() check is
+	-- deliberately independent of nvim_get_commands(): it still protects a
+	-- user's command if command metadata is unavailable on an unusual build.
+	local list_ok, user_commands = pcall(vim.api.nvim_get_commands, { builtin = false })
+	local existing = list_ok and type(user_commands) == "table" and user_commands[COMMAND_NAME] or nil
+	local exists_ok, command_exists = pcall(vim.fn.exists, ":" .. COMMAND_NAME)
+	local exists = exists_ok and command_exists == 2
+
 	if command_registered then
-		return true
+		if existing and existing.desc == COMMAND_DESCRIPTION then
+			return true
+		end
+		if not exists and not existing then
+			-- The command was removed while HyperMax remained loaded. Reinstall it.
+			command_registered = false
+		else
+			-- Another plugin or the user replaced the command after registration.
+			return false
+		end
 	end
 
-	-- Do not delete an existing command with the same name: it may belong to
-	-- the user or another plugin. Neovim reports a name collision, which we
-	-- surface without changing the existing command.
-	local ok = pcall(vim.api.nvim_create_user_command, "HyperMax", function(opts)
+	if exists or existing then
+		-- Never replace commands owned by the user or another plugin.
+		return false
+	end
+
+	local ok = pcall(vim.api.nvim_create_user_command, COMMAND_NAME, function(opts)
 		Commands.execute(opts.fargs or {}, opts)
 	end, {
 		nargs = "*",
-		desc = "HyperMax project and workspace commands",
+		desc = COMMAND_DESCRIPTION,
 		complete = Commands.complete,
+		force = false,
 	})
 
 	if not ok then

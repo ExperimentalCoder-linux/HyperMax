@@ -51,6 +51,7 @@ For lazy.nvim, add a plugin specification similar to:
     {
         "ExperimentalCoder-linux/HyperMax",
         name = "hypermax.nvim",
+        main = "hypermax",
         opts = {
             project_dir = "~/Code",
             create_missing_dir = true,
@@ -233,7 +234,9 @@ No other global feature shortcuts are installed automatically.
 
 HyperMax provides one scoped user command. Type :HyperMax followed by <Tab>
 for subcommand completion. Nested command groups also complete their own
-actions. Running :HyperMax without arguments opens the workspace.
+actions. Running :HyperMax without arguments opens the workspace. HyperMax does not
+replace an existing user command with that name. If a collision exists, the
+rest of the plugin still initializes and its <Plug> mappings remain available.
 
                                                     *:HyperMax*
 :HyperMax

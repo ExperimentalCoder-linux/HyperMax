@@ -40,7 +40,7 @@
 ---@field check_health fun() Run Neovim's HyperMax health check.
 local HyperMax = {}
 
-HyperMax.version = "0.7.0"
+HyperMax.version = "0.7.1"
 
 ---@type boolean
 local initialized = false
@@ -61,7 +61,13 @@ end
 local function Register_Commands()
 	local registered = require("hypermax.commands").setup(HyperMax)
 	if not registered then
-		error("the :HyperMax command name is already in use; HyperMax will not replace it", 0)
+		-- A command owned by the user or another plugin must win. Keep the rest
+		-- of HyperMax available through its <Plug> mappings and public Lua API.
+		Notify(
+			"Could not register :HyperMax because that command is already in use. "
+				.. "HyperMax has kept the existing command; use its <Plug> mappings instead.",
+			vim.log.levels.WARN
+		)
 	end
 end
 

@@ -7,7 +7,9 @@ local attached = {}
 
 local function Normalize(path)
 	if type(path) ~= "string" or path == "" then return nil end
-	return vim.fn.fnamemodify(vim.fn.expand(path), ":p"):gsub("\\", "/"):gsub("/+$", "")
+	local normalized = vim.fn.fnamemodify(vim.fn.expand(path), ":p"):gsub("\\", "/")
+	if normalized == "/" or normalized:match("^%a:/$") then return normalized end
+	return normalized:gsub("/+$", "")
 end
 
 local function Find_Project_Root(path)
@@ -29,11 +31,16 @@ local function Buffer_Root(buffer)
 	if vim.bo[buffer].buftype ~= "" then return nil end
 	local name = vim.api.nvim_buf_get_name(buffer)
 	if name == "" then name = vim.fn.getcwd() end
-	return Find_Project_Root(name)
+	local root = Find_Project_Root(name)
+	return root and Normalize(root) or nil
+end
+
+local function Clean_Statusline(value)
+	return tostring(value or ""):gsub("[%c]", " ")
 end
 
 local function Escape_Statusline(value)
-	return tostring(value or ""):gsub("%%", "%%%%"):gsub("[%c]", " ")
+	return Clean_Statusline(value):gsub("%%", "%%%%")
 end
 
 local function Restore_Window(window)
@@ -48,21 +55,35 @@ local function Restore_Window(window)
 	attached[window] = nil
 end
 
+local function Truncate_Display_Width(value, width)
+	if width < 1 then return "" end
+	if vim.fn.strdisplaywidth(value) <= width then return value end
+
+	local result = ""
+	local index = 0
+	while true do
+		local character = vim.fn.strcharpart(value, index, 1)
+		if character == "" then break end
+		local candidate = result .. character
+		if vim.fn.strdisplaywidth(candidate .. "…") > width then break end
+		result = candidate
+		index = index + 1
+	end
+	return result .. "…"
+end
+
 local function Format_Tasks(tasks, width)
 	local titles = {}
 	for _, task in ipairs(tasks) do
 		local status = (task.status or "todo"):upper()
-		titles[#titles + 1] = string.format("[%s] %s", status, task.title or "Untitled task")
+		local title = task.title or "Untitled task"
+		-- Put the task title before its status. In narrow splits the old format
+		-- truncated after the word PINNED, hiding the only useful information.
+		titles[#titles + 1] = string.format("%s [%s]", title, status)
 	end
-	local label = "◆ PINNED  " .. table.concat(titles, "  •  ")
-	label = Escape_Statusline(label)
-	local max_width = math.max(12, (tonumber(width) or vim.o.columns) - 8)
-	if vim.fn.strdisplaywidth(label) > max_width then
-		local plain = label:gsub("%%%%", "%%")
-		local truncated = vim.fn.strcharpart(plain, 0, math.max(8, max_width - 1)) .. "…"
-		label = Escape_Statusline(truncated)
-	end
-	return label
+	local plain = Clean_Statusline("◆ " .. table.concat(titles, "  •  "))
+	local max_width = math.max(8, tonumber(width) or (vim.o.columns - 8))
+	return Escape_Statusline(Truncate_Display_Width(plain, max_width))
 end
 
 local function Apply_Window(window, root, tasks)
@@ -84,12 +105,15 @@ local function Apply_Window(window, root, tasks)
 	end
 	-- A custom `%!` expression owns its complete winbar; do not append to or
 	-- replace it. Other literal winbars are extended and restored on cleanup.
-	if original:match("^%%!") then
+	if original:match("^%s*%%!") then
 		attached[window] = nil
 		return
 	end
 
-	local label = Format_Tasks(tasks, vim.api.nvim_win_get_width(window))
+	local window_width = vim.api.nvim_win_get_width(window)
+	local original_width = original ~= "" and vim.fn.strdisplaywidth(original) or 0
+	local available_width = math.max(8, window_width - original_width - 4)
+	local label = Format_Tasks(tasks, available_width)
 	local rendered = (original ~= "" and (original .. "  │  ") or "") .. "%#HyperMaxPinnedTask#" .. label .. "%*"
 	vim.api.nvim_set_hl(0, "HyperMaxPinnedTask", { link = "DiagnosticInfo", default = true })
 	local ok = pcall(function() vim.wo[window].winbar = rendered end)
@@ -132,7 +156,7 @@ function Overlay.Refresh_Project(root)
 	for _, window in ipairs(vim.api.nvim_list_wins()) do
 		if vim.api.nvim_win_is_valid(window) then
 			local buffer = vim.api.nvim_win_get_buf(window)
-			if Buffer_Root(buffer) == root then
+			if Buffer_Root(buffer) == Normalize(root) then
 				Apply_Window(window, root, pinned)
 			elseif attached[window] then
 				Restore_Window(window)

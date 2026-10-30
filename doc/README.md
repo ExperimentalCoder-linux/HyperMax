@@ -519,7 +519,7 @@ The following is a practical overview of currently exposed helpers. Check the so
 - `initialize()` — register runtime commands, mappings, and deferred startup hooks. Called automatically by `plugin/hypermax.lua`.
 - `is_initialized()` — returns whether automatic runtime initialization has completed.
 - `get_config()` — returns the active validated options table.
-- `get_version()` — returns the plugin version (`0.7.0` in this codebase).
+- `get_version()` — returns the plugin version (`0.7.1` in this codebase).
 - `create_project()` — starts project creation with current options.
 - `save_layout()` — saves the current directory as a layout.
 - `open_settings()` — opens the settings UI.
@@ -679,7 +679,7 @@ nvim --headless -u NONE -c "set rtp+=." -c "luafile tests/run.lua"
 
 Do not use `plenary.nvim` as the test framework. Busted is used for unit tests; Neovim itself remains the integration-test runtime because these tests exercise Neovim APIs.
 
-The GitHub Actions workflow runs Lua Language Server type checking, Luacheck, Lua 5.1 syntax checks, Busted unit specifications, and the Neovim integration suite with Neovim 0.10.4 on pushes and pull requests. A separate tag-triggered workflow validates SemVer/changelog alignment and creates a GitHub release with generated notes. LuaRocks publication is not enabled until a correct rockspec and publishing credentials are available. Inside Neovim, also verify scoped command completion, user-defined `<Plug>` mappings, default-map conflict handling, draft commands, project registry shortcuts, dashboard Git menus, and conversion/undo flows. Exercise empty targets, existing-file collisions, missing manager executables, invalid layout JSON, unsafe paths, read-only directories, and cancellation behavior.
+The GitHub Actions workflow runs Lua Language Server type checking, Luacheck, Lua 5.1 syntax checks, Busted unit specifications, and the Neovim integration suite with Neovim 0.10.0, 0.11.7, 0.12.6, and nightly on pushes and pull requests. A separate tag-triggered workflow validates SemVer/changelog alignment and creates a GitHub release with generated notes. LuaRocks publication is not enabled until a correct rockspec and publishing credentials are available. Inside Neovim, also verify scoped command completion, user-defined `<Plug>` mappings, default-map conflict handling, draft commands, project registry shortcuts, dashboard Git menus, and conversion/undo flows. Exercise empty targets, existing-file collisions, missing manager executables, invalid layout JSON, unsafe paths, read-only directories, and cancellation behavior.
 
 For each release, check:
 

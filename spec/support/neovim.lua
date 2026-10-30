@@ -43,6 +43,10 @@ _G.vim = {
 		end
 	end,
 	fn = {
+		exists = function(name)
+			local command_name = type(name) == "string" and name:match(":(.+)$")
+			return command_name and registered_commands[command_name] and 2 or 0
+		end,
 		getcompletion = function(prefix, completion_type)
 			assert.are.equal("dir", completion_type)
 			local candidates = { "src/", "tests/", "lua/" }
@@ -66,12 +70,24 @@ _G.vim = {
 		notifications[#notifications + 1] = { message = message, level = level }
 	end,
 	api = {
+		nvim_get_commands = function()
+			local result = {}
+			for name, command in pairs(registered_commands) do
+				result[name] = {
+					desc = command.desc,
+					nargs = command.options.nargs,
+					complete = command.options.complete,
+				}
+			end
+			return result
+		end,
 		nvim_create_user_command = function(name, callback, options)
-			if registered_commands[name] then
+			if registered_commands[name] and options.force ~= true then
 				error("Command already exists: " .. name)
 			end
 			registered_commands[name] = {
 				callback = callback,
+				desc = options.desc,
 				options = Deep_Copy(options),
 			}
 		end,

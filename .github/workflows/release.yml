@@ -6,20 +6,78 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
-    name: Validate and publish GitHub release
+  verify:
+    name: Verify tagged source before publishing
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out tagged source
         uses: actions/checkout@v4
 
-      - name: Verify SemVer and changelog alignment
-        run: python3 scripts/check_release_version.py "$GITHUB_REF_NAME"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Verify strict SemVer and changelog alignment
+        run: |
+          python3 scripts/check_release_version.py "$GITHUB_REF_NAME"
+          python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
+      - name: Install Lua 5.1 and LuaRocks
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua5.1 liblua5.1-0-dev luarocks
+
+      - name: Install Busted and LuaCheck
+        run: |
+          luarocks --lua-version=5.1 install busted
+          luarocks --lua-version=5.1 install luacheck
+
+      - name: Check Lua 5.1 syntax and lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            luac5.1 -p "$file"
+          done < <(find lua plugin tests spec scripts -type f -name '*.lua' -print0)
+          luacheck lua plugin spec --config .luacheckrc
+
+      - name: Run Busted specifications
+        run: busted --verbose spec
+
+      - name: Install stable Neovim for integration tests
+        uses: rhysd/action-setup-vim@v1
+        with:
+          version: v0.12.6
+          neovim: true
+
+      - name: Check every Lua file with Neovim's Lua runtime
+        run: nvim --headless -u NONE -c "luafile scripts/check_lua_files.lua" -c "qa!"
+
+      - name: Run Neovim integration suite
+        run: nvim --headless -u NONE -c "set rtp+=." -c "luafile tests/run.lua"
+
+  release:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    needs: verify
+    permissions:
+      contents: write
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
 
       - name: Create GitHub release with generated notes
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --prerelease
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+          fi

@@ -10,11 +10,22 @@ permissions:
 
 jobs:
   quality:
-    name: Lua quality checks
+    name: Lua quality and unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Validate release metadata and SemVer rules
+        run: |
+          python3 scripts/check_release_version.py "v$(sed -n 's/^HyperMax.version = "\([^"]*\)"$/\1/p' lua/hypermax/init.lua)"
+          python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
       - name: Check Lua types with Lua Language Server
         uses: mrcjkb/lua-typecheck-action@v0
@@ -28,14 +39,14 @@ jobs:
       - name: Install Lua 5.1 and LuaRocks
         run: |
           sudo apt-get update
-          sudo apt-get install --yes lua5.1 luarocks
+          sudo apt-get install --yes lua5.1 liblua5.1-0-dev luarocks
 
       - name: Install Lua development tools
         run: |
           luarocks --lua-version=5.1 install luacheck
           luarocks --lua-version=5.1 install busted
 
-      - name: Lint Lua sources and Busted specifications
+      - name: Lint plugin sources and Busted specifications
         run: luacheck lua plugin spec --config .luacheckrc
 
       - name: Check Lua 5.1 syntax
@@ -44,24 +55,36 @@ jobs:
           set -euo pipefail
           while IFS= read -r -d '' file; do
             luac5.1 -p "$file"
-          done < <(find lua plugin tests spec -type f -name '*.lua' -print0)
-
-      - name: Install Neovim
-        uses: rhysd/action-setup-vim@v1
-        with:
-          version: v0.10.4
-          neovim: true
-
-      - name: Check files with Neovim's Lua runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS= read -r -d '' file; do
-            CHECK_FILE="$file" nvim --headless -u NONE -c 'lua assert(loadfile(vim.env.CHECK_FILE))' -c 'qa!'
-          done < <(find lua plugin tests spec -type f -name '*.lua' -print0)
+          done < <(find lua plugin tests spec scripts -type f -name '*.lua' -print0)
 
       - name: Run Busted unit specifications
         run: busted --verbose spec
+
+  neovim-compatibility:
+    name: Neovim ${{ matrix.neovim-version }} integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        neovim-version:
+          - v0.10.0
+          - v0.11.7
+          - v0.12.6
+          - nightly
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Neovim ${{ matrix.neovim-version }}
+        uses: rhysd/action-setup-vim@v1
+        with:
+          version: ${{ matrix.neovim-version }}
+          neovim: true
+
+      - name: Check every Lua file with Neovim's Lua runtime
+        run: nvim --headless -u NONE -c "luafile scripts/check_lua_files.lua" -c "qa!"
 
       - name: Run Neovim integration suite
         run: nvim --headless -u NONE -c "set rtp+=." -c "luafile tests/run.lua"

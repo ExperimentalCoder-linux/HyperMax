@@ -1,3 +1,7 @@
 # Local save-point data and conversion safety copies are not source files.
 .hmc/history/
 .hmc.backup-*/
+
+# Local Python test artifacts.
+__pycache__/
+*.py[cod]

@@ -18,13 +18,24 @@ end
 -- when an assertion fails. This prevents a failed test from contaminating later
 -- suites or changing the developer's own winbar.
 local function With_Project_Buffer(callback)
-	local window = vim.api.nvim_get_current_win()
-	local previous_buffer = vim.api.nvim_win_get_buf(window)
-	local previous_winbar = vim.wo[window].winbar
+	local previous_tab = vim.api.nvim_get_current_tabpage()
+	local test_tab
+	local window
+	local previous_buffer
+	local previous_winbar
 	local root = vim.fn.fnamemodify(vim.fn.tempname(), ":p")
 	local buffer
 
 	local ok, err = xpcall(function()
+		-- Use a full-width window independent of the layout left by earlier
+		-- integration tests. The overlay must still show a useful title in narrow
+		-- splits, but this test verifies the complete title when space permits.
+		vim.cmd("tabnew")
+		test_tab = vim.api.nvim_get_current_tabpage()
+		window = vim.api.nvim_get_current_win()
+		previous_buffer = vim.api.nvim_win_get_buf(window)
+		previous_winbar = vim.wo[window].winbar
+
 		vim.fn.mkdir(root .. "/src", "p")
 		local source = assert(io.open(root .. "/src/main.lua", "w"))
 		source:write("print('editing')\n")
@@ -44,16 +55,29 @@ local function With_Project_Buffer(callback)
 		callback(root, window)
 	end, debug.traceback)
 
-	-- Clear HyperMax's ownership before restoring the exact user's settings.
-	pcall(Overlay.Clear_Window, window)
-	if vim.api.nvim_win_is_valid(window) then
-		pcall(vim.api.nvim_win_set_buf, window, previous_buffer)
-		pcall(function() vim.wo[window].winbar = previous_winbar end)
+	-- Restore every editor resource even when an assertion fails. This keeps
+	-- the user's original tab, buffer and winbar intact between test suites.
+	if window and vim.api.nvim_win_is_valid(window) then
+		pcall(Overlay.Clear_Window, window)
+		if previous_buffer and vim.api.nvim_buf_is_valid(previous_buffer) then
+			pcall(vim.api.nvim_win_set_buf, window, previous_buffer)
+		end
+		if previous_winbar ~= nil then
+			pcall(function() vim.wo[window].winbar = previous_winbar end)
+		end
 	end
 	if buffer and vim.api.nvim_buf_is_valid(buffer) then
 		pcall(vim.api.nvim_buf_delete, buffer, { force = true })
 	end
 	Cleanup(root)
+
+	if test_tab and vim.api.nvim_tabpage_is_valid(test_tab) then
+		pcall(vim.api.nvim_set_current_tabpage, test_tab)
+		pcall(vim.cmd, "tabclose!")
+	end
+	if previous_tab and vim.api.nvim_tabpage_is_valid(previous_tab) then
+		pcall(vim.api.nvim_set_current_tabpage, previous_tab)
+	end
 
 	if not ok then error(err) end
 end
@@ -71,11 +95,20 @@ Test.Run("Pinned tasks appear in the editor winbar and disappear immediately whe
 		local pinned, result = Flow.Toggle_Task_Pinned(root, task.id)
 		Test.True(pinned, tostring(result))
 
+		local saved_data, load_error = Flow.Load(root)
+		Test.True(saved_data ~= nil, tostring(load_error))
+		Test.True(saved_data.tasks[1].pinned, "Pin state must be persisted before the UI is refreshed")
+
 		local visible = vim.wo[window].winbar
 		Test.True(visible:find("Pinned overlay task", 1, true) ~= nil,
-			"Pinned title should be visible in the editor winbar")
-		Test.True(visible:find("PINNED", 1, true) ~= nil,
-			"Winbar should identify the pinned-task summary")
+			string.format(
+				"Pinned title should be visible when space is available; winbar=%q, width=%d, root=%s",
+				visible,
+				vim.api.nvim_win_get_width(window),
+				root
+			))
+		Test.True(visible:find("◆", 1, true) ~= nil,
+			"Winbar should identify the pinned-task summary with its marker")
 		Test.True(visible:find(base_winbar, 1, true) ~= nil,
 			"The existing literal winbar should be preserved")
 
@@ -103,6 +136,28 @@ Test.Run("Custom winbar expressions remain untouched when tasks are pinned", fun
 		Test.True(unpinned, tostring(unpin_result))
 		Test.Equal(custom_winbar, vim.wo[window].winbar,
 			"The custom winbar expression should remain intact after unpinning")
+	end)
+end)
+
+Test.Run("User winbar changes made while tasks are pinned are preserved", function()
+	With_Project_Buffer(function(root, window)
+		local base_winbar = "Original user winbar"
+		vim.wo[window].winbar = base_winbar
+
+		local added, task = Flow.Add_Task(root, "User option task", "Winbar ownership test", "normal")
+		Test.True(added, tostring(task))
+		local pinned, pin_result = Flow.Toggle_Task_Pinned(root, task.id)
+		Test.True(pinned, tostring(pin_result))
+
+		local replacement = "User changed winbar"
+		vim.wo[window].winbar = replacement
+		local refreshed, refresh_error = Overlay.Refresh_Window(window)
+		Test.True(refreshed, tostring(refresh_error))
+
+		local unpinned, unpin_result = Flow.Toggle_Task_Pinned(root, task.id)
+		Test.True(unpinned, tostring(unpin_result))
+		Test.Equal(replacement, vim.wo[window].winbar,
+			"Unpinning must restore the newest user winbar, not the stale original")
 	end)
 end)
 
