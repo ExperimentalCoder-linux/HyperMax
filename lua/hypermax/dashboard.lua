@@ -353,6 +353,8 @@ local function Render()
 	Add("  d      Delete item (confirmation)")
 	Add("  s      Cycle sort order")
 	Add("  g      Git menu    G  Init Git")
+	Add("  m      Workspace  t  Task board  w  Run configurations")
+	Add("  f      Find files  /  Search text")
 	Add("  ? + -  Git markers: modified/untracked/added")
 	Add("  r      Refresh   q  Close panel")
 
@@ -588,11 +590,170 @@ local function Run_Git_Terminal(action)
 	vim.cmd("terminal git -C " .. vim.fn.shellescape(State.root) .. " " .. action)
 end
 
+local function Show_Git_Output(title, lines)
+	local buffer = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_name(buffer, "HyperMaxGit://" .. title .. "-" .. tostring(buffer))
+	vim.api.nvim_buf_set_lines(buffer, 0, -1, false, (#lines > 0 and lines or { "(no output)" }))
+	vim.bo[buffer].buftype = "nofile"
+	vim.bo[buffer].bufhidden = "wipe"
+	vim.bo[buffer].swapfile = false
+	vim.bo[buffer].modifiable = false
+	vim.cmd("botright 12split")
+	vim.api.nvim_win_set_buf(0, buffer)
+	vim.api.nvim_win_set_option(0, "wrap", false)
+end
+
+local function Report_Git_Result(label, output, err)
+	if not output then
+		Notify(label .. " failed: " .. tostring(err), vim.log.levels.ERROR)
+		return false
+	end
+	Notify(label .. " completed")
+	Refresh()
+	return true
+end
+
+local function Select_Git_Entry(items, prompt, callback)
+	if not items or #items == 0 then
+		Notify("No " .. prompt:lower() .. " found")
+		return
+	end
+	vim.ui.select(items, { prompt = prompt }, callback)
+end
+
+local function Show_Branch_Menu()
+	vim.ui.select({ "Switch branch", "Create branch", "Delete local branch", "List local and remote branches", "Cancel" }, {
+		prompt = "Git branches",
+	}, function(action)
+		if not action or action == "Cancel" then return end
+		if action == "Create branch" then
+			vim.ui.input({ prompt = "New branch name: " }, function(name)
+				if not name or vim.trim(name) == "" then return end
+				local output, err = Git.Create_Branch(State.root, vim.trim(name))
+				Report_Git_Result("Create branch", output, err)
+			end)
+		elseif action == "List local and remote branches" then
+			local items, err = Git.Branches(State.root, true)
+			if not items then Notify("Could not list branches: " .. tostring(err), vim.log.levels.ERROR); return end
+			Show_Git_Output("Branches", items)
+		elseif action == "Switch branch" or action == "Delete local branch" then
+			local items, err = Git.Branches(State.root, false)
+			if not items then Notify("Could not list branches: " .. tostring(err), vim.log.levels.ERROR); return end
+			Select_Git_Entry(items, action == "Switch branch" and "Switch to branch" or "Delete branch", function(branch)
+				if not branch then return end
+				if action == "Switch branch" then
+					local output, switch_error = Git.Switch_Branch(State.root, branch)
+					Report_Git_Result("Switch branch", output, switch_error)
+				else
+					vim.ui.select({ "Delete branch", "Cancel" }, { prompt = "Delete local branch '" .. branch .. "'?" }, function(confirm)
+						if confirm ~= "Delete branch" then return end
+						local output, delete_error = Git.Delete_Branch(State.root, branch, false)
+						Report_Git_Result("Delete branch", output, delete_error)
+					end)
+				end
+			end)
+		end
+	end)
+end
+
+local function Show_Remote_Menu()
+	local actions = { "List remote URLs", "Add remote", "Remove remote", "Open remote details in terminal", "Cancel" }
+	vim.ui.select(actions, { prompt = "Git remotes" }, function(action)
+		if not action or action == "Cancel" then return end
+		if action == "List remote URLs" then
+			local output, err = Git.Remote_Details(State.root)
+			if not output then Notify("Could not list remotes: " .. tostring(err), vim.log.levels.ERROR) else Show_Git_Output("Remotes", output) end
+		elseif action == "Open remote details in terminal" then
+			Run_Git_Terminal("remote -v")
+		elseif action == "Add remote" then
+			vim.ui.input({ prompt = "Remote name (for example origin): " }, function(name)
+				if not name or vim.trim(name) == "" then return end
+				vim.ui.input({ prompt = "Remote URL: " }, function(url)
+					if not url or vim.trim(url) == "" then return end
+					local output, err = Git.Add_Remote(State.root, vim.trim(name), vim.trim(url))
+					Report_Git_Result("Add remote", output, err)
+				end)
+			end)
+		elseif action == "Remove remote" then
+			local remotes, err = Git.Remotes(State.root)
+			if not remotes then Notify("Could not list remotes: " .. tostring(err), vim.log.levels.ERROR); return end
+			Select_Git_Entry(remotes, "Remove remote", function(name)
+				if not name then return end
+				vim.ui.select({ "Remove remote", "Cancel" }, { prompt = "Remove remote '" .. name .. "'?" }, function(confirm)
+					if confirm ~= "Remove remote" then return end
+					local output, remove_error = Git.Remove_Remote(State.root, name)
+					Report_Git_Result("Remove remote", output, remove_error)
+				end)
+			end)
+		end
+	end)
+end
+
+local function Show_Stash_Menu()
+	vim.ui.select({ "Create stash", "Apply stash", "Pop stash", "List stashes", "Cancel" }, {
+		prompt = "Git stash",
+	}, function(action)
+		if not action or action == "Cancel" then return end
+		if action == "Create stash" then
+			vim.ui.input({ prompt = "Stash message (optional): " }, function(message)
+				local output, err = Git.Stash(State.root, message or "")
+				Report_Git_Result("Create stash", output, err)
+			end)
+		else
+			local stashes, err = Git.Stashes(State.root)
+			if not stashes then Notify("Could not list stashes: " .. tostring(err), vim.log.levels.ERROR); return end
+			if action == "List stashes" then Show_Git_Output("Stashes", stashes); return end
+			Select_Git_Entry(stashes, action, function(stash)
+				if not stash then return end
+				local reference = stash:match("^(%S+)")
+				local output, stash_error
+				if action == "Apply stash" then output, stash_error = Git.Stash_Apply(State.root, reference)
+				else output, stash_error = Git.Stash_Pop(State.root, reference) end
+				Report_Git_Result(action, output, stash_error)
+			end)
+		end
+	end)
+end
+
+local function Show_Tag_Menu()
+	vim.ui.select({ "View tag", "Create tag", "Delete tag", "List tags", "Cancel" }, { prompt = "Git tags" }, function(action)
+		if not action or action == "Cancel" then return end
+		local tags, err = Git.Tags(State.root)
+		if not tags then Notify("Could not list tags: " .. tostring(err), vim.log.levels.ERROR); return end
+		if action == "List tags" then Show_Git_Output("Tags", tags); return end
+		if action == "Create tag" then
+			vim.ui.input({ prompt = "New tag name: " }, function(tag)
+				if not tag or vim.trim(tag) == "" then return end
+				vim.ui.input({ prompt = "Annotation message (leave empty for lightweight tag): " }, function(message)
+					local output, tag_error = Git.Create_Tag(State.root, vim.trim(tag), message or "")
+					Report_Git_Result("Create tag", output, tag_error)
+				end)
+			end)
+			return
+		end
+		Select_Git_Entry(tags, action == "Delete tag" and "Delete tag" or "View tag", function(tag)
+			if not tag then return end
+			if action == "Delete tag" then
+				vim.ui.select({ "Delete tag", "Cancel" }, { prompt = "Delete tag '" .. tag .. "'?" }, function(confirm)
+					if confirm ~= "Delete tag" then return end
+					local output, delete_error = Git.Delete_Tag(State.root, tag)
+					Report_Git_Result("Delete tag", output, delete_error)
+				end)
+			else
+				local output, show_error = Git.Run(State.root, { "--no-pager", "show", "--stat", "--no-renames", tag })
+				if not output then Notify("Could not show tag: " .. tostring(show_error), vim.log.levels.ERROR) else Show_Git_Output("Tag " .. tag, output) end
+			end
+		end)
+	end)
+end
+
 local function Show_Git_Menu()
 	Refresh_Git()
-	local choices = State.git.available
-		and { "Status", "Stage all changes", "Commit staged changes", "Push", "Pull", "Recent commits", "Initialize repository" }
-		or { "Initialize repository", "Cancel" }
+	local choices = State.git.available and {
+		"Status", "Stage all changes", "Stage selected file", "Unstage selected file",
+		"Commit staged changes", "Fetch", "Pull", "Push", "Branches", "Remotes",
+		"Tags", "Stash", "Diff summary", "Recent commits", "Initialize repository",
+	} or { "Initialize repository", "Cancel" }
 
 	vim.ui.select(choices, { prompt = "HyperMax Git" }, function(choice)
 		if not choice or choice == "Cancel" then return end
@@ -600,26 +761,45 @@ local function Show_Git_Menu()
 			Initialize_Git()
 		elseif choice == "Status" then
 			local lines, err = Git_Command({ "status", "--short", "--branch" })
-			if lines then Notify(table.concat(lines, " | ")) else Notify("Git status failed: " .. tostring(err), vim.log.levels.ERROR) end
-			Refresh()
+			if lines then Show_Git_Output("Status", lines) else Notify("Git status failed: " .. tostring(err), vim.log.levels.ERROR) end
 		elseif choice == "Stage all changes" then
-			local output, err = Git_Command({ "add", "-A" })
-			if not output then Notify("Git add failed: " .. tostring(err), vim.log.levels.ERROR) else Notify("Staged all project changes") end
-			Refresh()
+			local output, err = Git.Add_All(State.root)
+			Report_Git_Result("Stage all changes", output, err)
+		elseif choice == "Stage selected file" or choice == "Unstage selected file" then
+			local selected = Get_Selected_Item()
+			if not selected then Notify("Select a file in the dashboard first", vim.log.levels.WARN); return end
+			local relative = Relative_Path(selected.path)
+			if not relative then Notify("Selected path is outside the project", vim.log.levels.ERROR); return end
+			local output, err
+			if choice == "Stage selected file" then output, err = Git.Stage(State.root, relative)
+			else output, err = Git.Unstage(State.root, relative) end
+			Report_Git_Result(choice, output, err)
 		elseif choice == "Commit staged changes" then
 			vim.ui.input({ prompt = "Commit message: " }, function(message)
 				if not message or vim.trim(message) == "" then return end
-				local output, err = Git_Command({ "commit", "-m", message })
-				if not output then Notify("Git commit failed: " .. tostring(err), vim.log.levels.ERROR) else Notify(table.concat(output, " | ")) end
-				Refresh()
+				local output, err = Git.Commit(State.root, message)
+				Report_Git_Result("Commit", output, err)
 			end)
-		elseif choice == "Push" then
-			Run_Git_Terminal("push")
-		elseif choice == "Pull" then
-			Run_Git_Terminal("pull")
+		elseif choice == "Fetch" then Run_Git_Terminal("fetch --all --prune")
+		elseif choice == "Pull" then Run_Git_Terminal("pull")
+		elseif choice == "Push" then Run_Git_Terminal("push")
+		elseif choice == "Branches" then Show_Branch_Menu()
+		elseif choice == "Remotes" then Show_Remote_Menu()
+		elseif choice == "Tags" then Show_Tag_Menu()
+		elseif choice == "Stash" then Show_Stash_Menu()
+		elseif choice == "Diff summary" then
+			local unstaged, err = Git.Diff(State.root, false)
+			if not unstaged then Notify("Git diff failed: " .. tostring(err), vim.log.levels.ERROR); return end
+			local staged, staged_err = Git.Diff(State.root, true)
+			if not staged then Notify("Git staged diff failed: " .. tostring(staged_err), vim.log.levels.ERROR); return end
+			local lines = { "Unstaged changes:", "" }
+			vim.list_extend(lines, unstaged)
+			vim.list_extend(lines, { "", "Staged changes:", "" })
+			vim.list_extend(lines, staged)
+			Show_Git_Output("Diff summary", lines)
 		elseif choice == "Recent commits" then
-			local lines = Git_Command({ "--no-pager", "log", "-5", "--oneline", "--decorate" })
-			Notify(lines and table.concat(lines, " | ") or "No commits yet")
+			local lines, err = Git.Log(State.root, 20)
+			if lines then Show_Git_Output("Recent commits", lines) else Notify("Git log failed: " .. tostring(err), vim.log.levels.ERROR) end
 		end
 	end)
 end
@@ -667,6 +847,11 @@ local function Set_Keymaps(buf)
 	Map("s", Cycle_Sort, "HyperMax: cycle file sorting")
 	Map("g", Show_Git_Menu, "HyperMax: Git actions")
 	Map("G", Initialize_Git, "HyperMax: initialize Git")
+	Map("m", function() require("hypermax.workspace").Open(State.root) end, "HyperMax: open workspace home")
+	Map("t", function() require("hypermax.flow").Open_Tasks(State.root) end, "HyperMax: open task board")
+	Map("w", function() require("hypermax.flow").Open_Runners(State.root) end, "HyperMax: open run configurations")
+	Map("f", function() require("hypermax.workspace").Find_Files(State.root) end, "HyperMax: find project files")
+	Map("/", function() require("hypermax.workspace").Search_Text(State.root) end, "HyperMax: search project text")
 	Map("r", Refresh, "HyperMax: refresh project panel")
 	Map("q", Close_Panel, "HyperMax: close project panel")
 end
@@ -726,6 +911,11 @@ function Dashboard.Open(project_root)
 	if not metadata then
 		Notify("Could not load project metadata: " .. tostring(err), vim.log.levels.ERROR)
 		return false
+	end
+
+	local registered, register_error = Project_Config.Mark_Project_Opened(project_root)
+	if not registered then
+		Notify("Project opened, but recent-project history could not be updated: " .. tostring(register_error), vim.log.levels.WARN)
 	end
 
 	Define_Highlights()

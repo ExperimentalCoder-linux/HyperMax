@@ -3,6 +3,10 @@ local Test = require("tests.testlib")
 local Dashboard = require("hypermax.dashboard")
 local FS = require("hypermax.filesystem")
 local uv = vim.uv or vim.loop
+local Project_Config = require("hypermax.project_config")
+local original_global_path = Project_Config.global_path
+local test_global_root = vim.fn.fnamemodify(vim.fn.tempname(), ":p")
+Project_Config.global_path = test_global_root .. "/hypermax/config.json"
 
 local function New_Project()
 	local root = vim.fn.fnamemodify(vim.fn.tempname(), ":p")
@@ -310,3 +314,6 @@ Test.Run("Dashboard created sorting is safe with filesystem timestamp fallbacks"
 	Test.True(ok, tostring(err)); Test.Equal("created", ({ [1] = "alphabetical", [2] = "file type", [3] = "modified", [4] = "created" })[state.sort_mode])
 	Cleanup(root)
 end)
+
+Project_Config.global_path = original_global_path
+pcall(vim.fn.delete, test_global_root, "rf")

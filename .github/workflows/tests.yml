@@ -25,9 +25,10 @@ jobs:
       - name: Check Lua syntax
         shell: bash
         run: |
-          find lua plugin tests -type f -name '*.lua' -print0 | while IFS= read -r -d '' file; do
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
             CHECK_FILE="$file" nvim --headless -u NONE -c 'lua assert(loadfile(vim.env.CHECK_FILE))' -c 'qa!'
-          done
+          done < <(find lua plugin tests -type f -name '*.lua' -print0)
 
       - name: Run test suite
         run: nvim --headless -u NONE -c "set rtp+=." -c "luafile tests/run.lua"

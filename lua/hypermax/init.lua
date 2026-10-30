@@ -3,17 +3,25 @@ local Layouts = require("hypermax.layouts")
 local Config = require("hypermax.config")
 local Project = require("hypermax.project")
 local Settings = require("hypermax.settings")
+local Workspace = require("hypermax.workspace")
+local Flow = require("hypermax.flow")
 
 local HyperMax = {}
 
-HyperMax.version = "0.2.0"
+HyperMax.version = "0.4.0"
 
 local function Register_Commands()
 	local commands = {
 		"HyperMaxCreate",
 		"HyperMaxSaveLayout",
+		"HyperMaxLayoutEdit",
 		"HyperMaxConfig",
 		"HyperMaxSettings",
+		"HyperMaxWorkspace",
+		"HyperMaxPalette",
+		"HyperMaxTasks",
+		"HyperMaxRuns",
+		"HyperMaxDiagnostics",
 	}
 
 	for _, command in ipairs(commands) do
@@ -29,7 +37,13 @@ local function Register_Commands()
 	vim.api.nvim_create_user_command("HyperMaxSaveLayout", function()
 		Project.Save_Layout()
 	end, {
-		desc = "Save the current directory as a HyperMax layout",
+		desc = "Create a reusable layout draft from the current directory",
+	})
+
+	vim.api.nvim_create_user_command("HyperMaxLayoutEdit", function()
+		Project.Edit_Layout()
+	end, {
+		desc = "Edit an existing HyperMax layout in a temporary file",
 	})
 
 	vim.api.nvim_create_user_command("HyperMaxConfig", function()
@@ -43,6 +57,22 @@ local function Register_Commands()
 	end, {
 		desc = "Open HyperMax settings",
 	})
+
+	vim.api.nvim_create_user_command("HyperMaxWorkspace", function()
+		Workspace.Open()
+	end, { desc = "Open the HyperMax workspace home" })
+	vim.api.nvim_create_user_command("HyperMaxPalette", function()
+		Workspace.Palette()
+	end, { desc = "Open the HyperMax command palette" })
+	vim.api.nvim_create_user_command("HyperMaxTasks", function()
+		Flow.Open_Tasks()
+	end, { desc = "Open the current project's task board" })
+	vim.api.nvim_create_user_command("HyperMaxRuns", function()
+		Flow.Open_Runners()
+	end, { desc = "Manage project run configurations" })
+	vim.api.nvim_create_user_command("HyperMaxDiagnostics", function()
+		Workspace.Diagnostics()
+	end, { desc = "Show diagnostics scoped to the current project" })
 end
 
 function HyperMax.setup(options)
@@ -93,6 +123,26 @@ end
 
 function HyperMax.open_settings()
 	Settings.Open()
+end
+
+function HyperMax.open_workspace()
+	Workspace.Open()
+end
+
+function HyperMax.open_palette()
+	Workspace.Palette()
+end
+
+function HyperMax.open_tasks()
+	Flow.Open_Tasks()
+end
+
+function HyperMax.open_runs()
+	Flow.Open_Runners()
+end
+
+function HyperMax.open_diagnostics()
+	Workspace.Diagnostics()
 end
 
 return HyperMax

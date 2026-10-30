@@ -184,6 +184,7 @@ function Keymaps.Setup(Project, Settings, Layouts)
 			"Settings",
 			"Load layout",
 			"Save current project as layout",
+			"Edit saved layout",
 			"Open last project",
 			"List layouts",
 			"Health Check",
@@ -205,6 +206,8 @@ function Keymaps.Setup(Project, Settings, Layouts)
 				Project.Load_Layout()
 			elseif choice == "Save current project as layout" then
 				Project.Save_Layout()
+			elseif choice == "Edit saved layout" then
+				Project.Edit_Layout()
 			elseif choice == "Open last project" then
 				Project.Open_Last()
 			elseif choice == "List layouts" then
@@ -273,6 +276,15 @@ function Keymaps.Setup(Project, Settings, Layouts)
 		Project.List()
 	end, "List projects")
 
+	-- Neovim's <D-...> notation is the Super/Command modifier on terminals
+	-- and GUIs that forward it. Keep the leader mappings for portability.
+	vim.keymap.set("n", "<D-p>", function()
+		Project.List()
+	end, { desc = "HyperMax: choose a registered project", silent = true })
+	vim.keymap.set("n", "<D-o>", function()
+		Project.Open_Last()
+	end, { desc = "HyperMax: open the last registered project", silent = true })
+
 	Map("n", function()
 		Project.Create(require("hypermax.config").options)
 	end, "New project")
@@ -310,6 +322,38 @@ function Keymaps.Setup(Project, Settings, Layouts)
 	end, "Show configuration")
 
 	-- =====================================================
+	-- WORKSPACE EXPERIENCE
+	-- =====================================================
+
+	Map("m", function()
+		require("hypermax.workspace").Open()
+	end, "Open HyperMax workspace")
+
+	Map("t", function()
+		require("hypermax.flow").Open_Tasks()
+	end, "Open project task board")
+
+	Map("w", function()
+		require("hypermax.flow").Open_Runners()
+	end, "Open project run configurations")
+
+	Map("f", function()
+		require("hypermax.workspace").Find_Files()
+	end, "Find files in project")
+
+	Map("/", function()
+		require("hypermax.workspace").Search_Text()
+	end, "Search text in project")
+
+	Map("x", function()
+		require("hypermax.workspace").Diagnostics()
+	end, "Review current project diagnostics")
+
+	vim.keymap.set("n", "<leader>+<Space>", function()
+		require("hypermax.workspace").Palette()
+	end, { desc = "HyperMax: command palette", silent = true })
+
+	-- =====================================================
 	-- HEALTH CHECK
 	-- =====================================================
 
@@ -331,5 +375,7 @@ function Keymaps.Setup(Project, Settings, Layouts)
 		Confirm_Action("Remove HyperMax metadata? A backup will be kept", function() return Scrape_Project(path) end)
 	end, "Scrape project metadata")
 end
+
+Keymaps.Run_Health_Check = Run_Health_Check
 
 return Keymaps

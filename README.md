@@ -23,8 +23,11 @@ HyperMax is not claiming to replace every language-specific official tool or spe
 
 ## Features at a glance
 
-- Interactive project-creation wizard.
+- Interactive project-creation wizard and a global, recency-aware project registry.
 - Language and project-manager registries.
+- A unified workspace home, action palette, project finder and text/diagnostic navigation.
+- Per-project task boards and named build/test/run configurations.
+- Expanded Git workflows for branches, remotes, tags, stashes, diffs and history.
 - Optional reusable project layouts.
 - Save the current directory structure as a layout.
 - Configurable project parent directory and default selections.
@@ -80,14 +83,21 @@ Mappings are created in normal mode and use your configured `mapleader`.
 | Keymap | Action |
 | --- | --- |
 | `<leader>++` | Open the HyperMax menu |
-| `<leader>+p` | List projects in the configured project directory |
+| `<leader>+p` or `<D-p>` | Browse all registered HyperMax projects, including converted folders outside the configured project directory |
 | `<leader>+s` | Open settings |
 | `<leader>+l` | Load/apply a saved layout |
 | `<leader>+L` | Save the current directory as a layout |
-| `<leader>+o` | Open the last remembered project |
+| `<leader>+o` or `<D-o>` | Open the most recently registered/opened HyperMax project |
 | `<leader>+c` | Show current configuration |
 | `<leader>+r` | Create a project using the wizard |
 | `<leader>+n` | Start project creation using current configuration defaults |
+| `<leader>+m` | Open the HyperMax workspace home |
+| `<leader>+<Space>` | Open the command palette |
+| `<leader>+t` | Open the current project's task board |
+| `<leader>+w` | Manage project build/test/run configurations |
+| `<leader>+f` | Find a file in the current project |
+| `<leader>+/` | Search text in the current project with ripgrep |
+| `<leader>+x` | Review diagnostics for the current project |
 
 If a mapping conflicts with your own setup, change or remove it in your Neovim configuration.
 
@@ -102,7 +112,7 @@ When a HyperMax project is open, its persistent sidebar supports these normal-mo
 | `a` | Create a file using a project-relative path (for example `src/player.c`) |
 | `A` | Create a folder using a project-relative path |
 | `s` | Cycle sorting: alphabetical → file type → modified date → created date |
-| `g` | Open Git actions: status, stage all, commit, push, pull, recent commits, and initialize |
+| `g` | Open Git actions: status, stage/unstage, commit, fetch/pull/push, branches, remotes, tags, stashes, diffs, and history |
 | `G` | Initialize a Git repository in this project if it is not already one |
 | `r` | Refresh the tree and Git status |
 | `q` | Close the sidebar |
@@ -111,27 +121,59 @@ Git decorations show untracked (`?`), added (`+`), modified (`●`), deleted (`�
 
 ### Folder conversion shortcuts
 
-- `<leader>+C` or `:HyperMaxConvert [directory]` converts an existing folder into a HyperMax project without changing its source files.
+- `<leader>+C` or `:HyperMaxConvert [directory]` converts an existing folder into a HyperMax project without changing its source files. It writes project identity and metadata into `.hmc/` and registers the absolute path in the global HyperMax project index.
 - `<leader>+u` or `:HyperMaxUndoConversion [directory]` reverses only a conversion created by HyperMax.
 - `<leader>+X` or `:HyperMaxScrape [directory]` removes HyperMax metadata from a project while preserving a `.hmc.backup-*` directory. This is useful when a folder should no longer be treated as a HyperMax project.
 
 The dashboard supports `R` to rename/move an item, `x` to cut, `p` to paste into a project-relative folder, and `d` to delete after confirmation. `.git` and `.hmc` metadata paths are protected from these file operations. Legacy `.hmc` layouts such as `basic.json`, `project.json`, `settings.json`, and `files.json` are read for compatibility.
+
+HyperMax stores a registry of project paths and recent-open information in its global data directory. `:HyperMaxConvert` registers converted projects automatically, and project discovery merges the registry with projects found directly under `project_dir`. This also means `<D-p>` can list converted folders located elsewhere on disk. `<D-o>` uses the global registry's latest project, so a newly converted folder becomes the project opened by that shortcut.
 
 ## Commands
 
 | Command | Action |
 | --- | --- |
 | `:HyperMaxCreate` | Open the project-creation wizard |
-| `:HyperMaxSaveLayout` | Save the current directory as a layout |
+| `:HyperMaxSaveLayout` | Capture the current directory and open its editable layout draft |
+| `:HyperMaxLayoutEdit` | Open an existing layout in the editable draft workflow |
 | `:HyperMaxConfig` | Print the current configuration |
 | `:HyperMaxSettings` | Open the settings menu |
+| `:HyperMaxWorkspace` | Open the central workspace home |
+| `:HyperMaxPalette` | Open the command palette |
+| `:HyperMaxTasks` | Open the current project's task board |
+| `:HyperMaxRuns` | Manage project run configurations |
+| `:HyperMaxDiagnostics` | Show diagnostics for the current project in quickfix |
+
+## Workspace home, task flow and run configurations
+
+HyperMax now has a central workspace view that brings common project actions into one place. Open it with `<leader>+m` or `:HyperMaxWorkspace`. The command palette (`<leader>+<Space>` or `:HyperMaxPalette`) exposes the same actions through Neovim's `vim.ui.select` interface, so UI selector plugins can enhance it without a hard dependency.
+
+The workspace includes project switching and creation, the project explorer, recent projects, a task board, run configurations, file finding, text search, TODO/FIXME scanning, project-scoped diagnostics, Git status, layouts, settings, and health checks. Project pickers put recently opened projects first and show the last-opened timestamp. The home screen also summarizes Git changes, open tasks, run configurations, and current editor diagnostics.
+
+### Task board
+
+Use `<leader>+t` or `:HyperMaxTasks` inside a HyperMax project. Tasks have a title, optional details, one of three states (`todo`, `doing`, `done`) and a priority (`low`, `normal`, `high`). The board supports adding, editing, moving, reprioritising, completing and deleting tasks. Tasks are saved per project in `.hmc/workspace.json`.
+
+### Run configurations
+
+Use `<leader>+w` or `:HyperMaxRuns` to create named commands such as CMake builds, test suites, formatters, or launch commands. Each configuration stores a name, command, project-relative working directory and optional description. Select a configuration and press `Enter` or `r` to launch it in a terminal split.
+
+Run commands are project data and are executed only after an explicit Run action. Review commands before running them, especially when opening projects from untrusted sources. Working directories are restricted to existing paths inside the project, including real-path checks that reject symlink escapes. Configuration definitions are stored alongside the task board in `.hmc/workspace.json` and are not part of reusable layouts.
+
+### Search and navigation
+
+`<leader>+f` opens a project file picker. It uses ripgrep when available and a bounded filesystem scan otherwise. `<leader>+/` opens project text search through ripgrep and populates the quickfix list with matches. `<leader>+x` collects current Neovim diagnostics for buffers inside the project into quickfix. Git status opens in a terminal rooted at the current project. The workspace also offers a buffer switcher.
 
 ## Layouts: reuse the way you work
 
 A layout captures a reusable project structure, including directories and file contents. It is useful if you have a preferred layout for experiments, small games, libraries, school work, or other recurring project types.
 
 - Use `<leader>+L` or `:HyperMaxSaveLayout` from the directory you want to capture.
+- HyperMax scans the directory tree and opens a temporary JSON draft in Neovim. The draft contains relative directory paths and the text contents of captured files, so you can add, remove, or edit files before saving.
+- Write the draft with `:w` or `:HyperMaxLayoutSave` to validate and save it. Use `:HyperMaxLayoutCancel` to discard it.
+- Use `:HyperMaxLayoutEdit` or the main menu's **Edit saved layout** action to edit a saved template in the same draft workflow.
 - Use `<leader>+l` to choose and apply a saved layout.
+- `.hmc` and Git metadata (`.git`, `.hg`, `.svn`) are never copied. Dependency/build/cache directories, binary files, credential files (`.env`, private keys, and package-registry credentials), and files larger than 4 MiB are skipped. Safe hidden project files such as `.gitignore`, `.editorconfig`, and `.github/` are included.
 - Built-in layout data is stored in `lua/hypermax/layouts.json`.
 - User-saved layouts are stored in Neovim's data directory under `hypermax/layouts.json`.
 
@@ -142,8 +184,9 @@ HyperMax is intended to save repetitive setup time, but it has limitations:
 - **Early-stage coverage:** a registry entry does not guarantee a fully configured, tested, production-ready build workflow for every version of every tool.
 - **Not a compiler or package manager:** HyperMax creates project files; you still need the language runtime, compiler, dependencies, and external tools.
 - **Generated output needs review:** you should inspect build scripts, manifests, and commands before running them. Adjust them for your platform and workflow.
-- **Less specialised than dedicated tools:** a language's official CLI or a mature framework generator may offer deeper framework-specific setup, dependency management, and upgrade support.
-- **Neovim UI dependency:** interactive prompts require Neovim's UI selection/input functions to work.
+- **Not a replacement for every dedicated IDE subsystem:** deep refactoring, visual designers, integrated profilers, debugger adapters, remote development and framework-specific tooling still depend on Neovim plugins or external tools. HyperMax coordinates a developer workspace; it does not implement compilers, language servers or debuggers itself.
+- **Command execution is project-authored:** inspect a run configuration before launching it, particularly when opening an untrusted repository.
+- **Neovim UI dependency:** interactive prompts use Neovim's `vim.ui` selection/input functions and can be styled by compatible UI plugins.
 
 The benefit is consistency and convenience across projects, not a promise that every generated project will build with zero changes.
 
@@ -159,7 +202,11 @@ hypermax.nvim/
 │   ├── managers.lua           # Project-manager definitions
 │   ├── layouts.lua            # Layout operations and persistence
 │   ├── layouts.json           # Built-in layout data
-│   ├── settings.lua            # Interactive settings
+│   ├── workspace.lua          # Workspace home, palette, search and diagnostics
+│   ├── flow.lua               # Project task board and run configurations
+│   ├── git.lua                # Git state and actions
+│   ├── project_config.lua     # Project metadata and global registry
+│   ├── settings.lua           # Interactive settings
 │   ├── config.lua              # Defaults and persisted configuration
 │   ├── keymaps.lua             # Default keymaps
 │   └── progress.lua            # Generation progress UI

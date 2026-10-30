@@ -13,6 +13,7 @@ HyperMax is a Neovim plugin for creating starter projects from a language, a pro
   - [Commands](#commands)
   - [Creating a project](#creating-a-project)
   - [Layouts](#layouts)
+  - [Project registry](#project-registry)
   - [Settings](#settings)
   - [Generated files and safety](#generated-files-and-safety)
   - [Troubleshooting](#troubleshooting)
@@ -73,11 +74,11 @@ HyperMax maps normal-mode shortcuts under `<leader>+`. The plus sign is part of 
 | Keymap | Action | Description |
 |---|---|---|
 | `<leader>++` | Open HyperMax menu | Opens a menu with project, settings, layout, and last-project actions. |
-| `<leader>+p` | List projects | Scans the configured project directory and offers projects to open. |
+| `<leader>+p` or `<D-p>` | List projects | Browses registered projects from the global index and recovers projects found directly under `project_dir`. |
 | `<leader>+s` | Settings | Opens the interactive settings menu. |
 | `<leader>+l` | Load layout | Selects a saved layout and applies it to a target project directory. |
-| `<leader>+L` | Save layout | Saves the current working directory's structure as a reusable layout. |
-| `<leader>+o` | Open last project | Opens the last project path remembered by HyperMax, if one is available. |
+| `<leader>+L` | Save layout | Captures the current working directory into an editable temporary JSON draft. |
+| `<leader>+o` or `<D-o>` | Open last project | Opens the most recently registered/opened HyperMax project. |
 | `<leader>+c` | Show configuration | Prints the current configuration table. |
 | `<leader>+r` | Create project | Starts the project-creation wizard. |
 | `<leader>+n` | New project | Starts project creation using the current configuration as defaults. |
@@ -89,11 +90,15 @@ Mappings are registered in normal mode and are silent. If one conflicts with you
 | Command | Action |
 |---|---|
 | `:HyperMaxCreate` | Start the project-creation wizard. |
-| `:HyperMaxSaveLayout` | Save the current directory as a layout. |
+| `:HyperMaxSaveLayout` | Capture the current directory and open an editable layout draft. |
+| `:HyperMaxLayoutEdit` | Choose and edit an existing user layout draft. |
+| `:HyperMaxConvert [directory]` | Convert an existing directory into a registered HyperMax project. |
+| `:HyperMaxUndoConversion [directory]` | Undo a folder conversion while preserving its metadata backup. |
+| `:HyperMaxScrape [directory]` | Remove project metadata while retaining a backup. |
 | `:HyperMaxConfig` | Print the current HyperMax configuration. |
 | `:HyperMaxSettings` | Open the interactive settings menu. |
 
-These commands do not currently accept documented command-line arguments; selection happens through the interactive UI.
+Project conversion/undo/scrape commands accept an optional directory argument and default to the current working directory. The remaining commands use interactive prompts or editor buffers.
 
 ## Creating a project
 
@@ -109,14 +114,26 @@ The default project parent is `~/Projects`. The default language is `cpp`, and t
 
 ## Layouts
 
-A layout describes a reusable project structure: directories, file contents, and optional language-specific commands. Layouts can be used to make consistent structures across new projects.
+A layout describes a reusable project structure: relative directory paths, text file contents, and optional language compatibility/entry-file metadata. It is not a copy of a project's HyperMax state.
 
-- **Save current project as layout:** run `:HyperMaxSaveLayout` or press `<leader>+L` while the current working directory is the directory you want to capture.
-- **Load layout:** run `<leader>+l` and select an available layout.
+- **Create a layout:** run `:HyperMaxSaveLayout` or press `<leader>+L` in the directory to capture. HyperMax opens a temporary JSON file in Neovim; edit `directories`, `files`, `name`, `description`, and optional `languages`/`entry` fields before saving.
+- **Save the draft:** use `:write` or `:HyperMaxLayoutSave`. The JSON is validated before it is stored in the user layout registry. Use `:HyperMaxLayoutCancel` to discard the temporary draft.
+- **Edit an existing layout:** run `:HyperMaxLayoutEdit`, select a saved layout, and edit its draft in the same way.
+- **Load a layout:** run `<leader>+l` and select an available layout when creating a new project.
 - Built-in layouts/data live in `lua/hypermax/layouts.json`.
 - User-saved layouts are stored under Neovim's data directory at `stdpath("data") .. "/hypermax/layouts.json"`.
 
-Layout paths are intended to be relative to the project root. Absolute paths, parent-directory traversal (`..`), and backslash-separated paths are rejected by path validation. If a layout cannot be loaded, inspect the JSON syntax and ensure file/directory paths are safe relative paths.
+The `.hmc` folder is always project-specific and is excluded from reusable layouts. Git metadata, common build/dependency/cache folders, credential files, binary files, and files larger than 4 MiB are skipped. Safe hidden files such as `.gitignore`, `.editorconfig`, and `.github/` are retained. A draft contains an `_capture` section describing skipped items; this metadata is removed from the saved layout.
+
+Layout paths must be safe relative POSIX-style paths. Absolute paths, parent traversal (`..`), control characters, backslashes, `.hmc` paths, and Git metadata paths are rejected by validation. Existing files at the destination are never overwritten by layout application.
+
+## Project registry
+
+Each HyperMax project has a `.hmc/` directory containing its project identity, settings, and file-tree snapshot. Folder conversion creates the same metadata and registers the absolute project path in the global index at `stdpath("data") .. "/hypermax/config.json"`. The global index is separate from project-local `.hmc/` metadata and stores project identity, language/manager information, and recent-open timestamps.
+
+`<leader>+p` and `<D-p>` browse registered projects regardless of their location. The project list also scans direct children of `project_dir` as a recovery path for older projects that predate the index. `<leader>+o` and `<D-o>` open the most recently registered/opened project. Converting a folder automatically registers it, so it is available immediately through both shortcuts.
+
+Only folders containing a valid `.hmc/` project marker are shown. Ordinary directories are not presented as HyperMax projects until they are created through HyperMax or converted with `:HyperMaxConvert`.
 
 ## Settings
 
@@ -185,22 +202,21 @@ HyperMax is a Lua plugin organized around a small public entry module and specia
 ```text
 Neovim runtime
     │
-    ├── plugin/hypermax.lua       Runtime entry point; loads once
-    │       │
-    │       └── require("hypermax").setup()
-    │                    │
-    │                    ├── config.lua       Defaults + persisted options
-    │                    ├── keymaps.lua      Normal-mode key bindings
-    │                    ├── settings.lua     Interactive settings editor
-    │                    ├── project.lua      Project wizard + file creation
-    │                    │       ├── languages.lua
-    │                    │       ├── managers.lua
-    │                    │       ├── layouts.lua
-    │                    │       └── progress.lua
-    │                    └── layouts.lua      Layout registry + JSON I/O
+    ├── plugin/hypermax.lua       Runtime entry point
+    │       └── hypermax.init     Public setup and command registration
+    │               ├── config.lua          User preferences
+    │               ├── keymaps.lua         Keyboard/menu dispatch
+    │               ├── project.lua         Project/layout workflows
+    │               ├── project_config.lua  .hmc metadata + global index
+    │               ├── dashboard.lua       Project sidebar + Git UI
+    │               │       └── git.lua     Git command boundary
+    │               ├── layouts.lua         Layout registry/validation
+    │               ├── languages.lua       Language registry
+    │               ├── managers.lua        Manager registry
+    │               ├── settings.lua        Settings UI
+    │               └── progress.lua        Generation progress UI
     │
-    └── User commands: HyperMaxCreate, HyperMaxSaveLayout,
-                       HyperMaxConfig, HyperMaxSettings
+    └── Tests: layouts, project lifecycle, filesystem, Git, dashboards
 ```
 
 The intended dependency direction is that the project workflow consumes registries and services, while registries should not depend on UI-specific code unless required. Lua's `require()` cache ensures each module is normally initialised once per Neovim session. Avoid creating circular dependencies: keep shared configuration in `config.lua`, registry data in registry modules, and user interaction in the UI/workflow layer.
@@ -209,25 +225,28 @@ The intended dependency direction is that the project workflow consumes registri
 
 ```text
 hypermax.nvim/
+├── .github/workflows/tests.yml
+├── CONTRIBUTING.md
 ├── README.md
-├── plugin/
-│   └── hypermax.lua
-├── lua/
-│   └── hypermax/
-│       ├── init.lua
-│       ├── project.lua
-│       ├── languages.lua
-│       ├── managers.lua
-│       ├── layouts.lua
-│       ├── layouts.json
-│       ├── config.lua
-│       ├── settings.lua
-│       ├── keymaps.lua
-│       ├── progress.lua
-│       └── check_list.txt
-├── doc/          Reserved for Vim help documentation
-├── root_files/   Reserved for reusable root-level file templates
-└── tests/        Reserved for automated tests
+├── plugin/hypermax.lua
+├── lua/hypermax/
+│   ├── init.lua
+│   ├── project.lua
+│   ├── project_config.lua
+│   ├── dashboard.lua
+│   ├── git.lua
+│   ├── languages.lua
+│   ├── managers.lua
+│   ├── layouts.lua
+│   ├── layouts.json
+│   ├── config.lua
+│   ├── settings.lua
+│   ├── workspace.lua
+│   ├── flow.lua
+│   ├── keymaps.lua
+│   └── progress.lua
+├── doc/                 User and developer documentation
+└── tests/               Headless and integration test suites
 ```
 
 ### File responsibilities
@@ -236,7 +255,12 @@ hypermax.nvim/
 |---|---|---|
 | `plugin/hypermax.lua` | Neovim runtime loader; guards against duplicate loading and calls setup. | Runtime plugin scripts are discovered by Neovim; this file should be small and side-effect-limited. |
 | `lua/hypermax/init.lua` | Public module, version, setup, user-command registration, and public convenience functions. | Gives users and plugin managers one stable entry point. |
-| `project.lua` | Interactive creation flow, project listing/opening, last-project behavior, manifest generation, and safe file/directory creation. | Project creation is the main workflow and coordinates the other modules. |
+| `project.lua` | Interactive creation flow, layout draft editor, project listing/opening, manifest generation, and safe file/directory creation. | Project workflows coordinate the other modules while keeping UI state together. |
+| `project_config.lua` | Per-project `.hmc` metadata, project snapshots, global project registry, and folder conversion. | Separates project identity from reusable layouts and global preferences. |
+| `dashboard.lua` | Project sidebar, file operations, and interactive Git actions. | Keeps the project tree and its editor interaction in one module. |
+| `workspace.lua` | Workspace home, action palette, file/text search, TODO scan, project diagnostics and quick navigation. | Provides one discoverable home for the developer workflow. |
+| `flow.lua` | Project-local task board, run configurations, validation and persistence. | Separates workflow data from its UI and keeps it scoped to the project. |
+| `git.lua` | Git command execution, status parsing, branch/remote/tag/stash/history operations. | Makes Git operations testable and keeps shell/argument handling out of the UI. |
 | `languages.lua` | Language metadata and language-related queries, including default entry filenames and executable checks. | Keeps language-specific identity separate from project-generation mechanics. |
 | `managers.lua` | Per-language manager registry and lookup/availability helpers. | Prevents manager logic from being scattered through project code. |
 | `layouts.lua` | Built-in/user layout loading, validation, lookup, manifest building, placeholder replacement, applying/saving/deleting layouts. | Treats layouts as reusable data rather than hard-coded wizard branches. |
@@ -252,9 +276,9 @@ hypermax.nvim/
 1. Neovim sources `plugin/hypermax.lua` from `runtimepath`.
 2. The `vim.g.loaded_hypermax` guard prevents the runtime entry point from registering the plugin repeatedly.
 3. The entry point calls `require("hypermax").setup()`.
-4. `init.lua` loads the keymap, layout, config, project, and settings modules.
-5. On first setup, `Config.setup(options)` merges defaults, saved settings, and caller overrides; commands and keymaps are registered.
-6. Commands delegate to the corresponding module functions. For example, `:HyperMaxCreate` calls `Project.Create(Config.options)` and `:HyperMaxSaveLayout` calls `Project.Save_Layout()`.
+4. `init.lua` loads the keymap, layout, config, project, project metadata, dashboard, Git, and settings modules when their entry points are used.
+5. On setup, `Config.setup(options)` merges defaults, saved settings, and caller overrides; commands and keymaps are registered.
+6. Commands delegate to the corresponding workflow functions. For example, `:HyperMaxCreate` calls `Project.Create(Config.options)`, `:HyperMaxSaveLayout` opens a layout draft, and `:HyperMaxConvert` writes `.hmc` metadata and updates the global project index.
 
 `HyperMax.setup(options)` is designed to avoid repeating first-time registration. A later explicit call with non-`nil` options passes those options to `Config.setup`. If setup behavior is changed, preserve a clear distinction between **initial registration** and **reconfiguration**; otherwise repeated setup can create duplicate maps or unexpectedly reload persisted settings.
 
@@ -273,9 +297,36 @@ local version = HyperMax.get_version()
 HyperMax.create_project()
 HyperMax.save_layout()
 HyperMax.open_settings()
+HyperMax.open_workspace()
+HyperMax.open_palette()
+HyperMax.open_tasks()
+HyperMax.open_runs()
+HyperMax.open_diagnostics()
 ```
 
 The `get_config()` function returns the live `Config.options` table, not a defensive copy. Callers should treat it as read-only unless they intentionally want to mutate runtime state; use configuration APIs for persisted changes.
+
+## Workspace and flow architecture
+
+The day-to-day workspace is split into three cooperating modules:
+
+- `workspace.lua` owns the workspace home, action palette, project file finder, ripgrep search, TODO/FIXME scanner, project-scoped diagnostics, buffer switcher and Git status terminal.
+- `flow.lua` owns project-local tasks and named run configurations. The persistence and validation API is intentionally available independently from its UI.
+- `dashboard.lua` remains the project file explorer and Git action surface. It exposes shortcuts to the workspace, task board, run configurations and project search.
+
+Project-specific flow data is stored in `.hmc/workspace.json`, separate from the reusable project layout snapshot. The document has a versioned top-level object with `tasks` and `runners` arrays. Task states are `todo`, `doing` and `done`; priorities are `low`, `normal` and `high`. Run configurations contain a stable ID, display name, shell command, project-relative working directory, description and last-run result metadata.
+
+The runner UI only launches a command after an explicit Run action. The command is treated as user-authored project content; commands should be reviewed when projects are cloned or otherwise untrusted. Working directories reject absolute paths and parent traversal, and real-path containment checks prevent a symlink from redirecting a runner outside the project root.
+
+The project index keeps `last_opened` metadata so project selection is recency-first. Opening the project dashboard refreshes this timestamp, which means projects opened through the startup path are included in recent-project ordering too.
+
+### Extending workspace actions
+
+Add a new action to the `Actions(root)` table in `workspace.lua` with a concise label, a short explanation and a callback. If the action needs a persistent window, isolate that UI in its own module and keep the callback thin. Add a keymap only when the action is frequent enough to deserve a direct shortcut; retain the command palette as the discoverable fallback.
+
+### Extending task or run data
+
+Keep normalization and validation in `flow.lua` at the persistence/API boundary, not only in input callbacks. Update `Normalize_Data()` when adding a field, provide a safe default for older files, add tests to `tests/test_flow.lua`, and explain whether the field is project-local or global. Do not execute imported run configurations automatically.
 
 ## Project generation pipeline
 
@@ -397,7 +448,7 @@ This is an illustrative fragment, not a complete replacement for the real file. 
 
 - Use unique, stable layout IDs.
 - Use relative POSIX-style paths (`src/main.cpp`), not absolute paths.
-- Do not use `..`, `.` path components, drive-prefixed paths, NUL characters, or backslashes.
+- Do not use `..`, `.` path components, drive-prefixed paths, control characters, or backslashes. `.hmc` and Git metadata segments are reserved and rejected.
 - Keep file content as strings and directories as arrays of strings.
 - Avoid defining a manager manifest and a layout file at the same path unless the precedence is intentional; current merge logic preserves manifest/layout content and adds missing manager files.
 - Treat generated commands as data that will eventually be executed by a user. Prefer transparent, conventional commands and document platform assumptions.
@@ -433,7 +484,7 @@ The following is a practical overview of currently exposed helpers. Check the so
 
 - `setup(options)` — initialise configuration, commands, and keymaps.
 - `get_config()` — returns the active options table.
-- `get_version()` — returns the plugin version (`0.2.0` in this codebase).
+- `get_version()` — returns the plugin version (`0.4.0` in this codebase).
 - `create_project()` — starts project creation with current options.
 - `save_layout()` — saves the current directory as a layout.
 - `open_settings()` — opens the settings UI.
@@ -441,10 +492,11 @@ The following is a practical overview of currently exposed helpers. Check the so
 ### `hypermax.project` (`project.lua`)
 
 - `Create(user_options)` — starts the interactive project wizard; options may override active configuration.
-- `Save_Layout()` — captures the current directory as a reusable layout.
-- `Open_Last()` — opens the remembered project, when one exists.
-- `List()` — scans the configured project directory and presents projects.
-- `Load_Layout()` — selects a layout and applies it through the layout/project workflow.
+- `Save_Layout()` — captures the current directory and opens an editable JSON draft.
+- `Edit_Layout()` — selects a saved user layout and opens its editable draft.
+- `Open_Last()` — opens the most recently registered/opened project, when one exists.
+- `List()` — browses indexed projects plus valid projects discovered directly under `project_dir`.
+- `Load_Layout()` — selects a layout and starts project creation with that layout.
 
 The generator also contains internal functions for path safety, directory creation, manifest composition, manager checks, and opening the generated project. Keep these local unless other modules genuinely need them; a smaller public API reduces accidental coupling.
 
@@ -468,9 +520,41 @@ Notable functions include `setup`, `get`, `set`, `save`, `reset`, and `get_setti
 
 - `Open()` — presents the interactive settings selector.
 
+### `hypermax.workspace` (`workspace.lua`)
+
+- `Open(root)` — opens the workspace home for the nearest HyperMax project.
+- `Palette(root)` — opens the action picker.
+- `Find_Files(root)` — opens a project-relative file picker (ripgrep or bounded filesystem fallback).
+- `Search_Text(root, query)` — searches with ripgrep and populates the quickfix list.
+- `Scan_Todos(root)` — collects TODO/FIXME/BUG/HACK markers into quickfix.
+- `Diagnostics(root)` — collects current Neovim diagnostics for buffers under the project into quickfix.
+- `Git_Status(root)` — opens Git status in a project-rooted terminal.
+
+### `hypermax.flow` (`flow.lua`)
+
+- `Normalize_Data(data)` — upgrades and sanitises the task/runner data shape.
+- `Load(root)` / `Save(root, data)` — read and atomically persist `.hmc/workspace.json`.
+- `Get_Summary(root)` — returns task status counts and the run-configuration count.
+- `Add_Task`, `Update_Task`, `Delete_Task` — mutate project tasks.
+- `Add_Runner`, `Update_Runner`, `Delete_Runner` — mutate named run configurations and validate project-relative working directories.
+- `Run_Runner(root, id)` — starts the selected, user-authored command in a terminal after checking its working directory.
+- `Open_Tasks(root)` / `Open_Runners(root)` — open the interactive task and runner screens.
+
 ### `hypermax.keymaps` (`keymaps.lua`)
 
 - `Setup(Project, Settings, Layouts)` — registers the plugin's normal-mode mappings. The current function accepts `Layouts` for interface compatibility, although the current mappings dispatch through `Project` for layout actions.
+
+### `hypermax.project_config` (`project_config.lua`)
+
+The project metadata service owns each project's `.hmc/` directory and the global project registry. Important functions include `Create`, `Load`, `Exists`, `Convert_Folder`, `Undo_Conversion`, `Scrape`, `Register_Project`, `Mark_Project_Opened`, `Get_Last_Project`, and `List_Projects`. The user-data registry defaults to `stdpath("data") .. "/hypermax/config.json"`; `Project_Config.global_path` is an override used by tests.
+
+Keep project-only settings and snapshots in `.hmc/`. Keep the global path registry in the Neovim data directory. Do not place `.hmc/` inside reusable layout data or copy it into a new project from a saved layout.
+
+### `hypermax.git` (`git.lua`)
+
+The Git wrapper returns command output or `nil, error`. It passes command arguments as a list to Neovim's system API. The wrapper is the only place new Git operations should be implemented; dashboard code should call its functions and handle user confirmation/display.
+
+Important functions include `Run`, `Status`, `Snapshot`, `Stage`, `Unstage`, `Commit`, `Branches`, `Switch_Branch`, `Create_Branch`, `Delete_Branch`, `Remotes`, `Add_Remote`, `Remove_Remote`, `Fetch`, `Push`, `Pull`, `Tags`, `Create_Tag`, `Delete_Tag`, `Stashes`, `Stash`, `Stash_Apply`, `Stash_Pop`, `Log`, and `Diff`.
 
 ### `hypermax.progress` (`progress.lua`)
 
@@ -485,7 +569,7 @@ Notable functions include `setup`, `get`, `set`, `save`, `reset`, and `get_setti
 
 Project creation and layout application write to the filesystem, so path safety is part of the design rather than optional polish.
 
-The generator validates manifest paths before joining them to the target root. The layout system separately validates paths read from layout data. These checks should reject absolute paths and traversal components so a malicious or malformed layout cannot deliberately write outside the project root. Keep validation close to the point where untrusted paths enter the filesystem pipeline, even if an earlier layer has already validated them.
+The generator validates manifest paths before joining them to the target root. The layout system separately validates paths read from layout data. These checks reject absolute paths, traversal components, control characters, backslashes, `.hmc` paths, and Git metadata paths so malformed layout data cannot deliberately write outside the project root or replace project metadata. Keep validation close to the point where untrusted paths enter the filesystem pipeline, even if an earlier layer has already validated them.
 
 The file writer is intended to create new files rather than overwrite existing content. Preserve this invariant if refactoring: accidental overwrites are destructive and difficult to reverse. When a path already exists, report the collision and choose a clear policy rather than silently truncating it. Directory creation can be idempotent; file creation should not assume that it is safe to replace an existing file.
 
@@ -511,34 +595,48 @@ Add a manager entry and any manager-specific manifest-generation logic. Ensure e
 
 ### Add a layout
 
-Add a validated layout record to the built-in JSON or use the user layout workflow. Use stable IDs and relative paths. Include files and directories that make sense for the language and selected manager, and ensure placeholders are replaced before writing.
+Add a validated layout record to the built-in JSON or use the user layout workflow. Use stable IDs and relative paths. Include files and directories that make sense for the language and selected manager, and ensure placeholders are replaced before writing. For project-specific identity/settings, extend `project_config.lua` rather than embedding `.hmc/` files in a reusable layout.
 
 ### Add a setting
 
 Add the default in `config.lua`, the UI entry/edit route in `settings.lua`, usage in the appropriate module, and documentation. Keep defaults backward-compatible so users with older settings files continue to work.
 
+### Add a workspace action
+
+Add an action to `workspace.lua`'s `Actions(root)` list. Keep it discoverable in the palette and connect it to a module-level function that can also be called from a user command or test. Avoid embedding complex file operations directly inside palette callbacks.
+
+### Add a flow field or task state
+
+Update `flow.lua`'s normalization rules and API validation, then add tests for valid, malformed, legacy and unsafe input. Keep `workspace.json` project-specific and do not copy it into reusable layouts.
+
 ### Add a command or keymap
 
 Register commands in `Register_Commands()` in `init.lua` with a descriptive `desc`. Add mappings in `keymaps.lua` through the local `Map()` helper so descriptions consistently use the `HyperMax:` prefix. Avoid registering commands in multiple modules.
 
+## Git integration
+
+`git.lua` is the dashboard's Git boundary. It invokes Git with an argv list rather than interpolating user data into a shell command. Its API covers repository detection/root discovery, porcelain status parsing, stage/unstage, commit/history/log, branch create/switch/delete/list, remote add/remove/list/fetch, push/pull, tags, stashes, and diff summaries. The dashboard exposes these actions under `g` while the project sidebar is focused.
+
+Keep new Git operations in `git.lua` instead of adding raw shell strings to dashboard callbacks. Validate branch/tag/path/ref arguments at the wrapper boundary, return `nil, error` on failed commands, and add temporary-repository integration tests for both successful and rejected operations. The terminal UI is reserved for operations where interactive Git behavior is useful; fixed operations should use the argv-based wrapper.
+
 ## Testing and release checklist
 
-The repository's `tests/` directory is currently present but does not contain a complete automated test suite. Before calling a change verified, run syntax and runtime checks in a real Neovim environment.
+The repository includes a headless Neovim test runner at `tests/run.lua` and focused suites for layouts, project lifecycle, filesystem operations, Git, and dashboard behavior. Before calling a change verified, run syntax and runtime checks in a real Neovim environment.
 
 Suggested local checks:
 
 ```sh
-# If luac is installed, syntax-check every Lua file.
-find lua plugin -name '*.lua' -print0 | xargs -0 -n1 luac -p
+# Syntax-check all Lua files (requires Lua or LuaJIT tooling).
+find lua plugin tests -name '*.lua' -print0 | xargs -0 -n1 luac -p
 
-# Check that the built-in layout JSON parses (Python is optional).
+# Check that the built-in layout JSON parses.
 python3 -m json.tool lua/hypermax/layouts.json >/dev/null
 
-# Start Neovim with the plugin on runtimepath, then inspect commands.
-nvim --clean
+# Run the complete headless Neovim test suite.
+nvim --headless -u NONE -c "set rtp+=." -c "luafile tests/run.lua"
 ```
 
-Inside Neovim, verify `:HyperMaxCreate`, `:HyperMaxSaveLayout`, `:HyperMaxConfig`, and `:HyperMaxSettings`, then test each keymap. Also test project creation with an empty target, an existing target/file collision, a missing manager executable, invalid layout JSON, a layout containing an unsafe path, and a read-only parent directory.
+The GitHub Actions workflow runs Lua syntax checks and the test suite with Neovim 0.10.4 on pushes and pull requests. Inside Neovim, also verify the draft commands, project registry shortcuts, dashboard Git menus, and conversion/undo flows. Exercise empty targets, existing-file collisions, missing manager executables, invalid layout JSON, unsafe paths, read-only directories, and cancellation behavior.
 
 For each release, check:
 

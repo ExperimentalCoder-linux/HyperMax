@@ -36,6 +36,9 @@ Test.Run("Unsafe paths are rejected", function()
 	for _, path in ipairs({ "", "/tmp/file", "../escape", "src/../escape", "./file", "C:/file", "a\\b", "a\0b" }) do
 		Test.False(Layouts.Is_Safe_Path(path), "Unsafe path was accepted: " .. tostring(path))
 	end
+	for _, path in ipairs({ ".hmc/basics.json", ".git/config", "src/.hg/store", "file\nname.c" }) do
+		Test.False(Layouts.Is_Safe_Path(path), "Protected or malformed path was accepted: " .. path)
+	end
 	Test.False(Layouts.Is_Safe_Path(nil), "nil path should be rejected")
 	Test.False(Layouts.Is_Safe_Path(42), "numeric path should be rejected")
 end)
@@ -108,4 +111,45 @@ Test.Run("Reload succeeds without corrupting layout data", function()
 	local ok, err = Layouts.Reload()
 	Test.True(ok, "Layout reload failed: " .. tostring(err))
 	Test.Type("table", Layouts.Get_All())
+end)
+
+
+Test.Run("Layout getter preserves the registry ID on selected layouts", function()
+	local ids = Layouts.Get_IDs()
+	if #ids == 0 then return end
+	local layout = Layouts.Get(ids[1])
+	Test.Equal(ids[1], layout.id)
+end)
+
+Test.Run("Saved layout includes nested paths and exact file contents", function()
+	local original_path = Layouts.user_path
+	local temporary = vim.fn.fnamemodify(vim.fn.tempname(), ":p")
+	Layouts.user_path = temporary .. "/layouts.json"
+	local id = "hypermax_layout_roundtrip_test"
+	local layout = {
+		name = "Roundtrip test",
+		description = "Layout persistence test",
+		directories = { "src", "src/nested", ".github/workflows" },
+		files = {
+			["src/main.c"] = "#include <stdio.h>\nint main(void) { return 0; }\n",
+			[".gitignore"] = "build/\n*.o\n",
+			[".github/workflows/test.yml"] = "name: test\non: [push]\n",
+		},
+		entry = "src/main.c",
+	}
+	local saved, save_error = Layouts.Save(id, layout)
+	Test.True(saved, tostring(save_error))
+	local loaded = Layouts.Get(id)
+	Test.Equal(id, loaded.id)
+	Test.Equal(layout.files["src/main.c"], loaded.files["src/main.c"])
+	Test.Equal(layout.files[".gitignore"], loaded.files[".gitignore"])
+	local manifest, manifest_error = Layouts.Build_Manifest("c", id, "Roundtrip")
+	Test.Not_Nil(manifest, tostring(manifest_error))
+	Test.Equal(layout.files["src/main.c"], manifest.files["src/main.c"])
+	Test.Equal("src/main.c", manifest.entry)
+	local deleted, delete_error = Layouts.Delete(id)
+	Test.True(deleted, tostring(delete_error))
+	Layouts.user_path = original_path
+	Layouts.Reload()
+	pcall(vim.fn.delete, temporary, "rf")
 end)

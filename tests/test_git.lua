@@ -108,6 +108,51 @@ else
 		{ "path with spaces is handled as argv", function(root) Git.Init(root); Write(root .. "/folder with spaces/file name.c"); local s = Git.Snapshot(root); Test.Not_Nil(s.statuses[vim.fs.normalize(root .. "/folder with spaces/file name.c")]) end },
 		{ "repository path with shell punctuation is handled literally", function(root) local odd = root .. "/project ; $(literal)"; vim.fn.mkdir(odd, "p"); local out, err = Git.Init(odd); Test.Not_Nil(out, tostring(err)); Test.True(Git.Is_Repository(odd)) end },
 		{ "commit message cannot execute shell substitutions", function(root) Git.Init(root); vim.fn.systemlist({ "git", "-C", root, "config", "user.email", "tests@example.invalid" }); vim.fn.systemlist({ "git", "-C", root, "config", "user.name", "HyperMax Tests" }); Write(root .. "/safe.c"); Git.Add_All(root); local marker = root .. "/should-not-exist"; local out, err = Git.Commit(root, "$(touch " .. marker .. ")"); Test.Not_Nil(out, tostring(err)); Test.Nil(uv.fs_lstat(marker)) end },
+
+		{ "branch listing and creation are supported", function(root)
+			Git.Init(root); vim.fn.systemlist({ "git", "-C", root, "config", "user.email", "tests@example.invalid" }); vim.fn.systemlist({ "git", "-C", root, "config", "user.name", "HyperMax Tests" }); Write(root .. "/seed.c"); Git.Add_All(root); local committed, commit_error = Git.Commit(root, "seed"); Test.Not_Nil(committed, tostring(commit_error)); local created, create_error = Git.Create_Branch(root, "feature/test-branch"); Test.Not_Nil(created, tostring(create_error)); local branches = Git.Branches(root); Test.Not_Nil(branches); Test.True(vim.tbl_contains(branches, "feature/test-branch"))
+		end },
+		{ "branch names use Git ref validation", function(root)
+			Git.Init(root)
+			local output, err = Git.Create_Branch(root, "bad..branch")
+			Test.Nil(output)
+			Test.Equal("Invalid branch name", err)
+		end },
+		{ "stage and unstage a selected relative path", function(root)
+			Git.Init(root); Write(root .. "/src/file with spaces.c"); local staged, stage_error = Git.Stage(root, "src/file with spaces.c"); Test.Not_Nil(staged, tostring(stage_error)); local statuses = Git.Status(root); Test.Equal("A ", statuses[vim.fs.normalize(root .. "/src/file with spaces.c")]); local unstaged, unstage_error = Git.Unstage(root, "src/file with spaces.c"); Test.Not_Nil(unstaged, tostring(unstage_error))
+		end },
+		{ "remote add/list/fetch/push/pull/remove workflow", function(root)
+			Git.Init(root)
+			local remote = New_Root("-remote.git")
+			local init_remote = vim.fn.systemlist({ "git", "init", "--bare", remote })
+			Test.Equal(0, vim.v.shell_error, table.concat(init_remote, "\n"))
+			vim.fn.systemlist({ "git", "-C", root, "config", "user.email", "tests@example.invalid" })
+			vim.fn.systemlist({ "git", "-C", root, "config", "user.name", "HyperMax Tests" })
+			Write(root .. "/seed.c"); Git.Add_All(root)
+			local committed, commit_error = Git.Commit(root, "seed"); Test.Not_Nil(committed, tostring(commit_error))
+			local added, add_error = Git.Add_Remote(root, "origin", "  " .. remote .. "  "); Test.Not_Nil(added, tostring(add_error))
+			Test.True(vim.tbl_contains(Git.Remotes(root), "origin"))
+			Test.True(#Git.Remote_Details(root) >= 2)
+			local branch = Git.Branch(root)
+			local pushed, push_error = Git.Push(root, "origin", branch); Test.Not_Nil(pushed, tostring(push_error))
+			local fetched, fetch_error = Git.Fetch(root, "origin"); Test.Not_Nil(fetched, tostring(fetch_error))
+			local pulled, pull_error = Git.Pull(root, "origin", branch); Test.Not_Nil(pulled, tostring(pull_error))
+			local removed, remove_error = Git.Remove_Remote(root, "origin"); Test.Not_Nil(removed, tostring(remove_error))
+			Test.False(vim.tbl_contains(Git.Remotes(root), "origin"))
+			Cleanup(remote)
+		end },
+		{ "create, list, and delete an annotated tag", function(root)
+			Git.Init(root); vim.fn.systemlist({ "git", "-C", root, "config", "user.email", "tests@example.invalid" }); vim.fn.systemlist({ "git", "-C", root, "config", "user.name", "HyperMax Tests" }); Write(root .. "/seed.c"); Git.Add_All(root); local committed, commit_error = Git.Commit(root, "seed"); Test.Not_Nil(committed, tostring(commit_error)); local created, create_error = Git.Create_Tag(root, "release/v1", "Release one"); Test.Not_Nil(created, tostring(create_error)); local tags = Git.Tags(root); Test.True(vim.tbl_contains(tags, "release/v1")); local deleted, delete_error = Git.Delete_Tag(root, "release/v1"); Test.Not_Nil(deleted, tostring(delete_error)); Test.False(vim.tbl_contains(Git.Tags(root), "release/v1"))
+		end },
+		{ "reject invalid tag names", function(root)
+			Git.Init(root); local output, err = Git.Create_Tag(root, "bad tag", "invalid"); Test.Nil(output); Test.Type("string", err)
+		end },
+		{ "invalid stash references are rejected", function(root)
+			Git.Init(root); local output, err = Git.Stash_Pop(root, "--all"); Test.Nil(output); Test.Equal("Invalid stash reference", err)
+		end },
+		{ "stash and restore untracked changes", function(root)
+			Git.Init(root); vim.fn.systemlist({ "git", "-C", root, "config", "user.email", "tests@example.invalid" }); vim.fn.systemlist({ "git", "-C", root, "config", "user.name", "HyperMax Tests" }); Write(root .. "/seed.c"); Git.Add_All(root); local committed, commit_error = Git.Commit(root, "seed"); Test.Not_Nil(committed, tostring(commit_error)); Write(root .. "/new.c"); local stashed, stash_error = Git.Stash(root, "test stash"); Test.Not_Nil(stashed, tostring(stash_error)); local stashes = Git.Stashes(root); Test.Not_Nil(stashes); Test.True(#stashes > 0); local popped, pop_error = Git.Stash_Pop(root, "stash@{0}"); Test.Not_Nil(popped, tostring(pop_error)); Test.Not_Nil(uv.fs_stat(root .. "/new.c"))
+		end },
 		{ "Git command failure returns an error", function(root) Git.Init(root); local out, err = Git.Run(root, { "not-a-real-git-subcommand" }); Test.Nil(out); Test.Type("string", err) end },
 		{ "snapshot refreshes after creating a file", function(root) Git.Init(root); local first = Git.Snapshot(root); Test.Equal(0, vim.tbl_count(first.statuses)); Write(root .. "/later.c"); local second = Git.Snapshot(root); Test.Equal(1, vim.tbl_count(second.statuses)) end },
 		{ "nested root path works", function(root) local nested = root .. "/deep project"; vim.fn.mkdir(nested, "p"); Git.Init(nested); Test.True(Git.Is_Repository(nested)) end },
@@ -125,7 +170,13 @@ else
 end
 
 -- Count and contract checks for every public API; kept separate for precise failures.
-local api = { "Run", "Repository_Root", "Is_Repository", "Branch", "Parse_Status", "Status", "Snapshot", "Init", "Add_All", "Commit", "Recent" }
+local api = {
+	"Run", "Repository_Root", "Is_Repository", "Branch", "Parse_Status", "Status", "Snapshot",
+	"Init", "Add_All", "Commit", "Recent", "Branches", "Remotes", "Remote_Details", "Tags",
+	"Stashes", "Log", "Diff", "Diff_Name_Status", "Stage", "Unstage", "Fetch", "Push", "Pull",
+	"Switch_Branch", "Create_Branch", "Delete_Branch", "Create_Tag", "Delete_Tag", "Stash", "Stash_Pop", "Stash_Apply",
+	"Add_Remote", "Remove_Remote",
+}
 for _, name in ipairs(api) do
 	Test.Run("Git public API exists: " .. name, function() Test.Type("function", Git[name]) end)
 end

@@ -105,7 +105,7 @@ function Layouts.Is_Safe_Path(path)
 		return false
 	end
 
-	if path:find("%z") or path:find("\\") then
+	if path:find("[%c]") or path:find("\\") then
 		return false
 	end
 
@@ -114,7 +114,8 @@ function Layouts.Is_Safe_Path(path)
 	end
 
 	for part in path:gmatch("[^/]+") do
-		if part == "." or part == ".." then
+		local lower = part:lower()
+		if part == "." or part == ".." or lower == ".hmc" or lower == ".git" or lower == ".hg" or lower == ".svn" then
 			return false
 		end
 	end
@@ -143,6 +144,18 @@ end
 local function Validate_Directories(directories, label)
 	if type(directories) ~= "table" then
 		return false, label .. ".directories must be a list"
+	end
+
+	local count, max_index = 0, 0
+	for key in pairs(directories) do
+		if type(key) ~= "number" or key < 1 or key % 1 ~= 0 then
+			return false, label .. ".directories must be a sequential list"
+		end
+		count = count + 1
+		max_index = math.max(max_index, key)
+	end
+	if count ~= max_index then
+		return false, label .. ".directories must not contain missing list entries"
 	end
 
 	for _, path in ipairs(directories) do
@@ -369,7 +382,11 @@ function Layouts.Get_Languages()
 end
 
 function Layouts.Get_All()
-	return Deep_Copy(Layouts.data.layouts)
+	local layouts = Deep_Copy(Layouts.data.layouts)
+	for id, layout in pairs(layouts) do
+		layout.id = id
+	end
+	return layouts
 end
 
 function Layouts.Get(id)
@@ -379,7 +396,9 @@ function Layouts.Get(id)
 		return nil
 	end
 
-	return Deep_Copy(layout)
+	local copy = Deep_Copy(layout)
+	copy.id = id
+	return copy
 end
 
 function Layouts.Exists(id)

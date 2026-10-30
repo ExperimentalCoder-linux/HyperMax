@@ -39,6 +39,8 @@ local test_files = {
 	"tests/test_filesystem.lua",
 	"tests/test_project_lifecycle.lua",
 	"tests/test_git.lua",
+	"tests/test_flow.lua",
+	"tests/test_workspace.lua",
 	"tests/test_dashboard.lua",
 	"tests/test_dashboard_deep.lua",
 }

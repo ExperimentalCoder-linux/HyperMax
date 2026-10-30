@@ -129,4 +129,210 @@ function Git.Recent(root, count)
 	return Git.Run(root, { "--no-pager", "log", "-" .. tostring(count), "--oneline", "--decorate" })
 end
 
+-- =========================================================
+-- BRANCHES, REMOTES, TAGS AND STASHES
+-- =========================================================
+
+local function Split_Lines(output)
+	local items = {}
+	for _, line in ipairs(output or {}) do
+		line = vim.trim(line)
+		if line ~= "" then items[#items + 1] = line end
+	end
+	return items
+end
+
+function Git.Branches(root, include_remote)
+	local args = { "branch", "--format=%(refname:short)" }
+	if include_remote then args = { "branch", "--all", "--format=%(refname:short)" } end
+	local output, err = Git.Run(root, args)
+	if not output then return nil, err end
+	return Split_Lines(output)
+end
+
+function Git.Remotes(root)
+	local output, err = Git.Run(root, { "remote" })
+	if not output then return nil, err end
+	return Split_Lines(output)
+end
+
+function Git.Remote_Details(root)
+	local output, err = Git.Run(root, { "remote", "-v" })
+	if not output then return nil, err end
+	return Split_Lines(output)
+end
+
+function Git.Tags(root)
+	local output, err = Git.Run(root, { "tag", "--list" })
+	if not output then return nil, err end
+	return Split_Lines(output)
+end
+
+function Git.Stashes(root)
+	local output, err = Git.Run(root, { "stash", "list", "--format=%gd%x09%gs" })
+	if not output then return nil, err end
+	return Split_Lines(output)
+end
+
+function Git.Log(root, count)
+	count = tonumber(count) or 10
+	if count ~= count or count == math.huge or count == -math.huge then count = 10 end
+	count = math.max(1, math.min(100, math.floor(count)))
+	return Git.Run(root, { "--no-pager", "log", "-" .. tostring(count), "--format=%h%x09%s%x09%an%x09%ar" })
+end
+
+function Git.Diff(root, staged)
+	local args = { "--no-pager", "diff", "--stat" }
+	if staged then args[#args + 1] = "--cached" end
+	return Git.Run(root, args)
+end
+
+function Git.Diff_Name_Status(root, staged)
+	local args = { "--no-pager", "diff", "--name-status" }
+	if staged then args[#args + 1] = "--cached" end
+	return Git.Run(root, args)
+end
+
+-- =========================================================
+-- COMMON MUTATIONS
+-- =========================================================
+
+local function Is_Safe_Relative_Path(path)
+	if type(path) ~= "string" or path == "" or path:find("[%c]") or path:find("\\") then return false end
+	if path:sub(1, 1) == "/" or path:match("^%a:") then return false end
+	for part in path:gmatch("[^/]+") do
+		if part == "." or part == ".." then return false end
+	end
+	return true
+end
+
+function Git.Stage(root, relative_path)
+	if not Is_Safe_Relative_Path(relative_path) then return nil, "A safe project-relative path is required" end
+	return Git.Run(root, { "add", "--", relative_path })
+end
+
+function Git.Unstage(root, relative_path)
+	if not Is_Safe_Relative_Path(relative_path) then return nil, "A safe project-relative path is required" end
+	-- git restore --staged needs HEAD. On an unborn repository, remove the
+	-- staged entry from the index without touching the working-tree file.
+	local head = Git.Run(root, { "rev-parse", "--verify", "HEAD" })
+	if not head then return Git.Run(root, { "rm", "--cached", "--", relative_path }) end
+	return Git.Run(root, { "restore", "--staged", "--", relative_path })
+end
+
+function Git.Fetch(root, remote)
+	local args = { "fetch", "--all", "--prune" }
+	if type(remote) == "string" and remote ~= "" then args = { "fetch", remote, "--prune" } end
+	return Git.Run(root, args)
+end
+
+function Git.Push(root, remote, branch)
+	local args = { "push" }
+	if type(remote) == "string" and remote ~= "" then args[#args + 1] = remote end
+	if type(branch) == "string" and branch ~= "" then args[#args + 1] = branch end
+	return Git.Run(root, args)
+end
+
+function Git.Pull(root, remote, branch)
+	local args = { "pull" }
+	if type(remote) == "string" and remote ~= "" then args[#args + 1] = remote end
+	if type(branch) == "string" and branch ~= "" then args[#args + 1] = branch end
+	return Git.Run(root, args)
+end
+
+local function Validate_Branch_Name(root, branch)
+	if type(branch) ~= "string" or branch == "" or branch:sub(1, 1) == "-" or branch:find("[%c]") then
+		return false, "Invalid branch name"
+	end
+	-- Let Git validate its complete ref-name grammar instead of imposing a
+	-- narrower ASCII-only whitelist. The value is still a single argv item.
+	local checked = Git.Run(root, { "check-ref-format", "refs/heads/" .. branch })
+	if not checked then return false, "Invalid branch name" end
+	return true
+end
+
+function Git.Switch_Branch(root, branch)
+	local valid, err = Validate_Branch_Name(root, branch)
+	if not valid then return nil, err end
+	return Git.Run(root, { "switch", branch })
+end
+
+function Git.Create_Branch(root, branch)
+	local valid, err = Validate_Branch_Name(root, branch)
+	if not valid then return nil, err end
+	return Git.Run(root, { "switch", "-c", branch })
+end
+
+function Git.Delete_Branch(root, branch, force)
+	local valid, err = Validate_Branch_Name(root, branch)
+	if not valid then return nil, err end
+	return Git.Run(root, { "branch", force and "-D" or "-d", branch })
+end
+
+local function Validate_Tag(root, tag)
+	if type(tag) ~= "string" or tag == "" or tag:sub(1, 1) == "-" or tag:find("[%c%s]") then
+		return false, "Invalid tag name"
+	end
+	local checked, err = Git.Run(root, { "check-ref-format", "refs/tags/" .. tag })
+	if not checked then return false, err or "Invalid tag name" end
+	return true
+end
+
+function Git.Create_Tag(root, tag, message)
+	local valid, err = Validate_Tag(root, tag)
+	if not valid then return nil, err end
+	if type(message) == "string" and vim.trim(message) ~= "" then
+		return Git.Run(root, { "tag", "-a", tag, "-m", message })
+	end
+	return Git.Run(root, { "tag", tag })
+end
+
+function Git.Delete_Tag(root, tag)
+	local valid, err = Validate_Tag(root, tag)
+	if not valid then return nil, err end
+	return Git.Run(root, { "tag", "-d", tag })
+end
+
+function Git.Stash(root, message)
+	local args = { "stash", "push", "--include-untracked" }
+	if type(message) == "string" and vim.trim(message) ~= "" then
+		args[#args + 1] = "-m"
+		args[#args + 1] = message
+	end
+	return Git.Run(root, args)
+end
+
+local function Is_Safe_Stash_Reference(reference)
+	return type(reference) == "string" and (reference == "refs/stash" or reference:match("^stash@{%d+}$") ~= nil)
+end
+
+function Git.Stash_Pop(root, reference)
+	local args = { "stash", "pop" }
+	if reference ~= nil and reference ~= "" then
+		if not Is_Safe_Stash_Reference(reference) then return nil, "Invalid stash reference" end
+		args[#args + 1] = reference
+	end
+	return Git.Run(root, args)
+end
+
+function Git.Stash_Apply(root, reference)
+	local args = { "stash", "apply" }
+	if reference ~= nil and reference ~= "" then
+		if not Is_Safe_Stash_Reference(reference) then return nil, "Invalid stash reference" end
+		args[#args + 1] = reference
+	end
+	return Git.Run(root, args)
+end
+
+function Git.Add_Remote(root, name, url)
+	if type(name) ~= "string" or not name:match("^[%w_.-]+$") or name:sub(1, 1) == "-" then return nil, "Invalid remote name" end
+	if type(url) ~= "string" or vim.trim(url) == "" or vim.trim(url):sub(1, 1) == "-" then return nil, "A valid remote URL is required" end
+	return Git.Run(root, { "remote", "add", name, vim.trim(url) })
+end
+
+function Git.Remove_Remote(root, name)
+	if type(name) ~= "string" or not name:match("^[%w_.-]+$") or name:sub(1, 1) == "-" then return nil, "Invalid remote name" end
+	return Git.Run(root, { "remote", "remove", name })
+end
+
 return Git

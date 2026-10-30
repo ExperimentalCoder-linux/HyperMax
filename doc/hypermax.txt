@@ -17,10 +17,11 @@ CONTENTS                                                     *hypermax-contents*
 3. Configuration ............................... |hypermax-configuration|
 4. Keybindings ................................. |hypermax-keybindings|
 5. Commands .................................... |hypermax-commands|
-6. Project Management ........................... |hypermax-projects|
-7. Layouts ..................................... |hypermax-layouts|
-8. Health Checks ............................... |hypermax-health|
-9. Troubleshooting ............................. |hypermax-troubleshooting|
+6. Workspace and Flow .......................... |hypermax-workspace|
+7. Project Management ........................... |hypermax-projects|
+8. Layouts ..................................... |hypermax-layouts|
+9. Health Checks ............................... |hypermax-health|
+10. Troubleshooting ............................ |hypermax-troubleshooting|
 
 ==============================================================================
 1. INTRODUCTION                                           *hypermax-introduction*
@@ -106,17 +107,39 @@ MAIN MENU
 
 PROJECT MANAGEMENT
 
-    <Leader>+p             Open the project list.
+    <Leader>+p             Open the registered HyperMax project list.
+
+    <D-p>                  Open the project list (requires terminal/GUI modifier support).
+
+    <D-o>                  Open the most recently opened or converted project.
 
     <Leader>+n             Create a new project.
 
     <Leader>+r             Create a project using the project wizard.
 
+WORKSPACE AND FLOW
+
+    <Leader>+m             Open the HyperMax workspace home.
+
+    <Leader>+<Space>       Open the HyperMax command palette.
+
+    <Leader>+t             Open the current project's task board.
+
+    <Leader>+w             Open named build/test/run configurations.
+
+    <Leader>+f             Find files in the current project.
+
+    <Leader>+/             Search text in the current project with ripgrep.
+
+    <Leader>+x             Open diagnostics scoped to the current project.
+
 LAYOUTS
 
     <Leader>+l             Load a project layout.
 
-    <Leader>+L             Save the current project as a layout.
+    <Leader>+L             Capture the current directory into an editable layout draft.
+
+    :HyperMaxLayoutEdit   Edit an existing saved layout in a temporary JSON buffer.
 
 SETTINGS
 
@@ -124,7 +147,7 @@ SETTINGS
 
 OTHER
 
-    <Leader>+o             Open the last project.
+    <Leader>+o             Open the last registered HyperMax project.
 
     <Leader>+c             Show HyperMax configuration.
 
@@ -146,6 +169,20 @@ HyperMax provides the following user commands.
 :HyperMaxCreate
     Start the project creation wizard.
 
+                                                    *:HyperMaxSaveLayout*
+:HyperMaxSaveLayout
+    Capture the current directory and open an editable layout JSON draft. Save
+    with :write or :HyperMaxLayoutSave; use :HyperMaxLayoutCancel to discard it.
+
+                                                    *:HyperMaxLayoutEdit*
+:HyperMaxLayoutEdit
+    Choose an existing saved layout and edit its JSON draft.
+
+                                                    *:HyperMaxConvert*
+:HyperMaxConvert [directory]
+    Add HyperMax project metadata to an existing directory and register it in
+    the global project index.
+
                                                     *:HyperMaxConfig*
 :HyperMaxConfig
     Display the HyperMax configuration.
@@ -154,8 +191,84 @@ HyperMax provides the following user commands.
 :HyperMaxHealthCheck
     Run the HyperMax health checks.
 
+                                                    *:HyperMaxWorkspace*
+:HyperMaxWorkspace
+    Open the workspace home with project status and quick actions.
+
+                                                    *:HyperMaxPalette*
+:HyperMaxPalette
+    Open the action picker. A compatible UI selector can add fuzzy search.
+
+                                                    *:HyperMaxTasks*
+:HyperMaxTasks
+    Open the current project's task board.
+
+                                                    *:HyperMaxRuns*
+:HyperMaxRuns
+    Create, edit, delete and run named project commands.
+
+                                                    *:HyperMaxDiagnostics*
+:HyperMaxDiagnostics
+    Collect current Neovim diagnostics from the current project into quickfix.
+
 ==============================================================================
-6. PROJECT MANAGEMENT                                         *hypermax-projects*
+6. WORKSPACE AND FLOW                                          *hypermax-workspace*
+==============================================================================
+
+Open the central workspace with <Leader>+m or :HyperMaxWorkspace. It shows
+project identity, Git change count, open-task count, run configurations and
+current diagnostic counts. Its shortcuts open project switching, the project
+explorer, task board, run configurations, file finding, text search, TODO
+scanning, project-scoped diagnostics, Git status, layouts, settings and health
+checks. Press x (or <Leader>+x outside the workspace) to open diagnostics for
+files under the project root in quickfix.
+
+The command palette is available with <Leader>+<Space> or :HyperMaxPalette.
+It uses vim.ui.select, so compatible selector plugins can provide fuzzy
+selection and custom presentation.
+
+TASK BOARD
+
+    Open with <Leader>+t or :HyperMaxTasks. A task has a title, optional
+    details, priority (low, normal or high) and status (todo, doing or done).
+
+    a       Add a task.
+    e       Edit the selected task.
+    s       Move the task to the next status.
+    p       Cycle priority.
+    d       Mark done or return to todo.
+    x       Delete after confirmation.
+    Enter   Display task details.
+
+RUN CONFIGURATIONS
+
+    Open with <Leader>+w or :HyperMaxRuns. Add named build, test, format or
+    launch commands. Each runner has a project-relative working directory.
+    Press Enter or r to run the selected configuration in a terminal split.
+
+    Commands are explicitly user-authored shell commands. Review them before
+    running configurations from untrusted projects. Working directories must
+    exist and are checked against real paths to prevent symlink escapes from
+    the project root.
+
+Both tasks and run configurations are saved in .hmc/workspace.json. This is
+project-specific state and is deliberately excluded from reusable layouts.
+
+SEARCH AND NAVIGATION
+
+    <Leader>+f opens a file picker. Ripgrep is used when installed; otherwise
+    HyperMax uses a bounded filesystem scan that skips common dependency and
+    build directories.
+
+    <Leader>+/ prompts for a text query and sends matches to the quickfix list
+    using ripgrep. <Leader>+x collects current Neovim diagnostics from buffers
+    inside the project into the quickfix list. Git status is available from
+    the workspace home and opens
+    in a terminal rooted at the project. The buffer switcher lists named,
+    listed buffers in the current Neovim instance.
+
+==============================================================================
+7. PROJECT MANAGEMENT                                         *hypermax-projects*
 ==============================================================================
 
 HyperMax provides project creation and management functions through its
@@ -171,15 +284,23 @@ PROJECT LIST
 
     Use <Leader>+p to open the project list.
 
+PROJECT REGISTRY
+
+    A folder becomes a registered project when it is created through HyperMax
+    or converted using :HyperMaxConvert. The global registry is independent of
+    project_dir, so projects can be listed even when they live elsewhere.
+
 LAST PROJECT
 
-    Use <Leader>+o to open the last project.
+    Use <Leader>+o or <D-o> to open the most recently registered project.
+    Use <D-p> to browse all registered projects when your terminal or GUI
+    forwards the Super/Command modifier to Neovim.
 
 The exact available project actions depend on the functions implemented by
 the installed version of HyperMax.nvim.
 
 ==============================================================================
-7. LAYOUTS                                                    *hypermax-layouts*
+8. LAYOUTS                                                    *hypermax-layouts*
 ==============================================================================
 
 HyperMax supports saving and loading project layouts.
@@ -192,11 +313,21 @@ LOAD A LAYOUT
 
     Use <Leader>+l to load a saved layout.
 
-Layouts can represent a project's directory and file structure, allowing
-reusable project structures to be applied when creating or managing projects.
+Layouts preserve project-relative directory paths and text file contents.
+Saving a layout opens a temporary JSON draft in the editor so you can create,
+remove, or edit entries before the template is persisted. Use :write or
+:HyperMaxLayoutSave to validate and save it; use :HyperMaxLayoutCancel to
+cancel the draft. The :HyperMaxLayoutEdit command opens an existing template.
+
+The .hmc project metadata, Git metadata, common build/cache directories,
+binary files, credential files, and files larger than 4 MiB are excluded from
+reusable layouts. Safe hidden files such as .gitignore and .editorconfig remain.
+
+User layouts are stored globally in Neovim's data directory. Project metadata
+and its file-tree snapshot remain inside each project's own .hmc directory.
 
 ==============================================================================
-8. HEALTH CHECKS                                                *hypermax-health*
+9. HEALTH CHECKS                                                *hypermax-health*
 ==============================================================================
 
 HyperMax includes a health-check command for checking its supported languages
@@ -216,7 +347,7 @@ If a test fails, inspect the output to identify the failing test and its
 associated error.
 
 ==============================================================================
-9. TROUBLESHOOTING                                      *hypermax-troubleshooting*
+10. TROUBLESHOOTING                                     *hypermax-troubleshooting*
 ==============================================================================
 
 PLUGIN NOT LOADING

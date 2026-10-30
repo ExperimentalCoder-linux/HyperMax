@@ -1,6 +1,7 @@
 local Project_Config = {}
 
 local uv = vim.uv or vim.loop
+Project_Config.global_path = nil
 
 local DATA_VERSION = 1
 local HISTORY_HEADER = "HMXHIST\0" .. string.char(0, 0, 0, DATA_VERSION)
@@ -14,9 +15,19 @@ local IGNORED_DIRECTORIES = {
 	["build"] = true,
 	[".venv"] = true,
 	["venv"] = true,
+	["dist"] = true,
+	["__pycache__"] = true,
+	[".pytest_cache"] = true,
+	[".mypy_cache"] = true,
+	[".ruff_cache"] = true,
+	[".next"] = true,
+	[".turbo"] = true,
+	[".ssh"] = true,
+	[".aws"] = true,
+	[".gnupg"] = true,
 }
 
-local MAX_LAYOUT_FILE_SIZE = 1024 * 1024
+local MAX_LAYOUT_FILE_SIZE = 4 * 1024 * 1024
 
 -- =========================================================
 -- PATHS
@@ -138,6 +149,15 @@ local function Capture_Directory(project_root)
 	local entries = {}
 	local errors = {}
 
+	local function Is_Sensitive_File(name)
+		local lower = name:lower()
+		if lower == ".env.example" or lower == ".env.sample" or lower == ".env.template" then return false end
+		if lower == ".env" or lower:match("^%.env%.") then return true end
+		if lower == ".npmrc" or lower == ".pypirc" or lower == ".netrc" then return true end
+		return lower == "id_rsa" or lower == "id_ed25519" or lower:match("%.pem$") ~= nil
+			or lower:match("%.p12$") ~= nil or lower:match("%.pfx$") ~= nil or lower:match("%.key$") ~= nil
+	end
+
 	local function Scan(directory, relative)
 		local handle, err = uv.fs_scandir(directory)
 
@@ -153,7 +173,8 @@ local function Capture_Directory(project_root)
 				break
 			end
 
-			if not (kind == "directory" and IGNORED_DIRECTORIES[name]) then
+			local metadata_path = name == ".git" or name == ".hmc"
+			if not metadata_path and not (kind == "directory" and IGNORED_DIRECTORIES[name]) then
 				local relative_path = relative == "" and name or relative .. "/" .. name
 
 				local full_path = Join(directory, name)
@@ -174,13 +195,20 @@ local function Capture_Directory(project_root)
 						content_saved = false,
 					}
 
-					if stat and stat.size <= MAX_LAYOUT_FILE_SIZE then
+					if Is_Sensitive_File(name) then
+						entry.skip_reason = "Potential secret or credential file"
+					elseif not stat then
+						entry.skip_reason = "Could not inspect file"
+					elseif stat.size > MAX_LAYOUT_FILE_SIZE then
+						entry.skip_reason = "File exceeds 4 MiB capture limit"
+					else
 						local content = Read_File(full_path)
-
 						-- Avoid saving likely binary files as text.
 						if content and not content:find("\0", 1, true) then
 							entry.content = content
 							entry.content_saved = true
+						else
+							entry.skip_reason = "Binary or unreadable file"
 						end
 					end
 
@@ -217,12 +245,14 @@ end
 
 local function Default_Basics(metadata)
 	local project_name = metadata.name or vim.fs.basename(metadata.root)
-	local git_directory = metadata.root .. "/.git"
-	local git_enabled = vim.fn.isdirectory(git_directory) == 1
+	local git_marker = metadata.root .. "/.git"
+	-- Git worktrees and submodules may use a .git *file*, not a directory.
+	local git_enabled = vim.fn.isdirectory(git_marker) == 1 or vim.fn.filereadable(git_marker) == 1
 
 	return {
 		version = DATA_VERSION,
 		project = {
+			id = metadata.id or (vim.fn.sha256(metadata.root .. "|" .. tostring(os.time())):sub(1, 16)),
 			name = project_name,
 			root = metadata.root,
 			language = metadata.language or "unknown",
@@ -252,6 +282,8 @@ local function Default_Global_Config()
 		base_location = Join(vim.fn.expand("~"), "Code"),
 		preferred_manager = "native",
 		settings = {},
+		projects = {},
+		last_project = "",
 	}
 end
 
@@ -278,8 +310,8 @@ end
 -- =========================================================
 
 function Project_Config.Get_Global()
-	local path = Get_Global_Config_Path()
-	local parent = Get_Global_Directory()
+	local path = Project_Config.global_path or Get_Global_Config_Path()
+	local parent = vim.fn.fnamemodify(path, ":h")
 
 	local ok, err = Ensure_Directory(parent)
 
@@ -295,19 +327,33 @@ function Project_Config.Get_Global()
 		end
 	end
 
-	return Read_JSON(path, Default_Global_Config())
+	local data, read_err = Read_JSON(path, Default_Global_Config())
+
+	if not data then
+		return nil, read_err
+	end
+
+	data.projects = type(data.projects) == "table" and data.projects or {}
+	data.last_project = type(data.last_project) == "string" and data.last_project or ""
+	data.settings = type(data.settings) == "table" and data.settings or {}
+
+	return data
 end
 
 function Project_Config.Save_Global(data)
-	local ok, err = Ensure_Directory(Get_Global_Directory())
+	local path = Project_Config.global_path or Get_Global_Config_Path()
+	local ok, err = Ensure_Directory(vim.fn.fnamemodify(path, ":h"))
 
 	if not ok then
 		return false, err
 	end
 
 	data.version = DATA_VERSION
+	data.projects = type(data.projects) == "table" and data.projects or {}
+	data.last_project = type(data.last_project) == "string" and data.last_project or ""
+	data.settings = type(data.settings) == "table" and data.settings or {}
 
-	return Write_JSON(Get_Global_Config_Path(), data)
+	return Write_JSON(path, data)
 end
 
 -- =========================================================
@@ -366,6 +412,13 @@ function Project_Config.Create(project_root, metadata)
 		return false, history_err
 	end
 
+	-- Project metadata is the durable project marker; the global index makes
+	-- converted folders discoverable even when they are outside project_dir.
+	local registered, register_error = Project_Config.Register_Project(project_root)
+	if not registered then
+		vim.notify("HyperMax: Project was created, but could not update the project index: " .. tostring(register_error), vim.log.levels.WARN)
+	end
+
 	return true, paths
 end
 
@@ -402,7 +455,8 @@ local function Read_Legacy_Basics(paths)
 					file = data.project.entry_file or data.entry_file or "",
 					["function"] = data.project.entry_function or data.entry_function or "main",
 				}
-				data.git = data.git or { enabled = vim.fn.isdirectory(vim.fn.fnamemodify(paths.directory, ":h") .. "/.git") == 1 }
+				local git_marker = vim.fn.fnamemodify(paths.directory, ":h") .. "/.git"
+				data.git = data.git or { enabled = vim.fn.isdirectory(git_marker) == 1 or vim.fn.filereadable(git_marker) == 1 }
 				return data
 			end
 			empty_data = data
@@ -476,6 +530,166 @@ function Project_Config.Load(project_root)
 end
 
 -- =========================================================
+-- GLOBAL PROJECT REGISTRY
+-- =========================================================
+
+local function Normalize_Project_Root(project_root)
+	if type(project_root) ~= "string" or project_root == "" then
+		return nil
+	end
+
+	local normalized = vim.fn.fnamemodify(vim.fn.expand(project_root), ":p")
+	if normalized ~= "/" then
+		normalized = normalized:gsub("/+$", "")
+	end
+	return normalized
+end
+
+function Project_Config.Register_Project(project_root, metadata)
+	project_root = Normalize_Project_Root(project_root)
+	if not project_root or not Project_Config.Exists(project_root) then
+		return false, "Cannot register a folder without a .hmc project marker"
+	end
+
+	local loaded, load_error = Project_Config.Load(project_root)
+	if not loaded then
+		return false, load_error
+	end
+
+	local project = (loaded.basics and loaded.basics.project) or {}
+	metadata = vim.deepcopy(metadata or {})
+	local global, global_error = Project_Config.Get_Global()
+	if not global then
+		return false, global_error
+	end
+
+	local now = os.time() + (((uv.hrtime and uv.hrtime() or os.clock() * 1000000000) % 1000000) / 1000000)
+	local latest_opened = 0
+	for _, item in ipairs(global.projects or {}) do
+		if type(item) == "table" then latest_opened = math.max(latest_opened, tonumber(item.last_opened) or 0) end
+	end
+	if now <= latest_opened then now = latest_opened + 0.000001 end
+	local entry = nil
+	local projects = {}
+	for _, item in ipairs(global.projects or {}) do
+		if type(item) == "table" then
+			local item_path = Normalize_Project_Root(item.path or item.root)
+			if item_path == project_root then
+				entry = item
+			elseif item_path then
+				projects[#projects + 1] = item
+			end
+		end
+	end
+
+	entry = entry or { added_at = now }
+	entry.id = project.id or entry.id or vim.fn.sha256(project_root):sub(1, 16)
+	entry.name = metadata.name or project.name or vim.fs.basename(project_root)
+	entry.path = project_root
+	entry.language = metadata.language or project.language or "unknown"
+	entry.manager = metadata.manager or project.manager or "native"
+	entry.created_at = project.created_at or entry.created_at or now
+	entry.last_opened = now
+	projects[#projects + 1] = entry
+
+	table.sort(projects, function(a, b)
+		return (a.name or a.path or ""):lower() < (b.name or b.path or ""):lower()
+	end)
+
+	global.projects = projects
+	global.last_project = project_root
+	return Project_Config.Save_Global(global)
+end
+
+function Project_Config.Mark_Project_Opened(project_root)
+	return Project_Config.Register_Project(project_root)
+end
+
+function Project_Config.Unregister_Project(project_root)
+	project_root = Normalize_Project_Root(project_root)
+	if not project_root then return false, "Project root is not a valid path" end
+	local global, err = Project_Config.Get_Global()
+	if not global then return false, err end
+	local projects = {}
+	for _, entry in ipairs(global.projects or {}) do
+		if type(entry) == "table" and Normalize_Project_Root(entry.path or entry.root) ~= project_root then
+			projects[#projects + 1] = entry
+		end
+	end
+	global.projects = projects
+	if Normalize_Project_Root(global.last_project) == project_root then global.last_project = "" end
+	return Project_Config.Save_Global(global)
+end
+
+function Project_Config.Get_Last_Project()
+	local global, err = Project_Config.Get_Global()
+	if not global then return nil, err end
+	local path = Normalize_Project_Root(global.last_project)
+	if path and Project_Config.Exists(path) then return path end
+
+	local latest
+	for _, entry in ipairs(global.projects or {}) do
+		if type(entry) == "table" and Project_Config.Exists(entry.path) then
+			if not latest or (entry.last_opened or 0) > (latest.last_opened or 0) then latest = entry end
+		end
+	end
+	return latest and latest.path or nil
+end
+
+function Project_Config.List_Projects(project_directory)
+	local global, err = Project_Config.Get_Global()
+	if not global then return nil, err end
+	local found = {}
+
+	local function Add(path, registry_entry)
+		path = Normalize_Project_Root(path)
+		if not path or found[path] or not Project_Config.Exists(path) then return end
+		local loaded = Project_Config.Load(path)
+		if not loaded then return end
+		local project = (loaded.basics and loaded.basics.project) or {}
+		found[path] = {
+			id = project.id or vim.fn.sha256(path):sub(1, 16),
+			name = project.name or vim.fs.basename(path),
+			path = path,
+			language = project.language or "unknown",
+			manager = project.manager or "native",
+			created_at = project.created_at,
+			added_at = type(registry_entry) == "table" and registry_entry.added_at or nil,
+			last_opened = type(registry_entry) == "table" and registry_entry.last_opened or nil,
+		}
+	end
+
+	for _, entry in ipairs(global.projects or {}) do
+		if type(entry) == "table" then Add(entry.path or entry.root, entry) end
+	end
+
+	-- Discover direct children as a recovery path for projects created before
+	-- the index existed or copied from another machine.
+	if type(project_directory) == "string" and project_directory ~= "" then
+		local directory = vim.fn.expand(project_directory)
+		local scan = uv.fs_scandir(directory)
+		if scan then
+			while true do
+				local name, kind = uv.fs_scandir_next(scan)
+				if not name then break end
+				if kind == "directory" and name ~= "." and name ~= ".." then Add(Join(directory, name)) end
+			end
+		end
+	end
+
+	local projects = {}
+	for _, entry in pairs(found) do projects[#projects + 1] = entry end
+	table.sort(projects, function(a, b)
+		local at, bt = tonumber(a.last_opened) or 0, tonumber(b.last_opened) or 0
+		if at ~= bt then return at > bt end
+		local an, bn = (a.name or ""):lower(), (b.name or ""):lower()
+		if an ~= bn then return an < bn end
+		return a.path < b.path
+	end)
+	return projects
+end
+
+-- =========================================================
 -- PROJECT CONVERSION / SCRAPING
 -- =========================================================
 
@@ -508,6 +722,10 @@ local function Remove_HMC(project_root, require_conversion)
 	local backup = directory .. ".backup-" .. os.date("%Y%m%d-%H%M%S")
 	local renamed, rename_err = uv.fs_rename(directory, backup)
 	if not renamed then return false, "Could not safely back up .hmc: " .. tostring(rename_err) end
+	local unregistered, unregister_error = Project_Config.Unregister_Project(project_root)
+	if not unregistered then
+		vim.notify("HyperMax: Metadata was backed up, but the global project index could not be updated: " .. tostring(unregister_error), vim.log.levels.WARN)
+	end
 	return true, backup
 end
 

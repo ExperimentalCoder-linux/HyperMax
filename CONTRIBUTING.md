@@ -12,7 +12,9 @@ Thanks for helping improve HyperMax. Reliability and preserving existing user da
    nvim --headless -u NONE -c "set rtp+=." -c "luafile tests/run.lua"
    ```
 5. Inspect generated files and exercise failure cases, not just the happy path.
-6. Update `README.md` or `doc/README.md` when commands, configuration, or supported combinations change.
+6. Update `README.md`, `doc/README.md`, and `doc/hypermax.txt` when commands, configuration, or workflows change.
+7. Keep state project-local when it belongs to one project; never leak `.hmc` data into reusable layouts.
+8. For external process launchers, make execution explicit, validate working directories and document trust expectations.
 
 ## Safety expectations
 
@@ -26,3 +28,21 @@ Thanks for helping improve HyperMax. Reliability and preserving existing user da
 ## Bug reports
 
 Include the Neovim version, operating system, relevant language and manager, exact steps to reproduce, expected and actual behavior, and the complete error message where possible. Remove secrets and private project contents before sharing logs.
+
+## Workspace architecture
+
+`workspace.lua` owns the workspace home, command/action picker, file finder, ripgrep search, TODO/FIXME scan, project-scoped diagnostics, buffer switcher and Git status terminal. Add discoverable actions to `Actions(root)` and keep complex operations in dedicated modules rather than embedding them in UI callbacks. Diagnostics should be filtered by project root and must not silently include unrelated buffers.
+
+`flow.lua` owns tasks and named run configurations in `.hmc/workspace.json`. It exposes normalization, persistence and mutation APIs separately from the UI so the behavior can be tested independently. When adding fields or states, update `Normalize_Data()` with backward-compatible defaults and add cases to `tests/test_flow.lua`.
+
+Run configurations are shell commands stored as project data. They must never execute automatically on project open. Keep execution behind an explicit Run action, validate the selected working directory at both save and execution time, and reject symlink escapes outside the project root. Treat run configuration contents from untrusted repositories as untrusted input.
+
+Project recency is stored in the global registry. Opening the project dashboard updates `last_opened`; preserve the global registry boundary rather than placing machine-specific absolute project paths into `.hmc` project files.
+
+## Test coverage
+
+The test runner includes project lifecycle/recency tests, flow persistence and validation tests, and workspace/flow UI smoke tests in addition to the existing layout, filesystem, Git and dashboard tests. The recommended verification command remains:
+
+```sh
+nvim --headless -u NONE -c "set rtp+=." -c "luafile tests/run.lua"
+```

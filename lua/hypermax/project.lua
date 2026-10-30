@@ -59,7 +59,7 @@ local function Is_Safe_Relative_Path(path)
 		return false
 	end
 
-	if path:find("%z") or path:find("\\") then
+	if path:find("[%c]") or path:find("\\") then
 		return false
 	end
 
@@ -1126,43 +1126,27 @@ end
 
 function Project.List()
 	local options = Config.options or {}
-	local root = vim.fn.expand(options.project_dir or "~/Projects")
-	local entries = uv.fs_scandir(root)
-
-	if not entries then
-		Notify("Project directory does not exist: " .. root, vim.log.levels.WARN)
+	local projects, err = Project_Config.List_Projects(options.project_dir or "~/Projects")
+	if not projects then
+		Notify("Could not load registered projects: " .. tostring(err), vim.log.levels.ERROR)
 		return
 	end
 
-	local projects = {}
-
-	while true do
-		local name, kind = uv.fs_scandir_next(entries)
-
-		if not name then
-			break
-		end
-
-		if kind == "directory" and name:sub(1, 1) ~= "." then
-			local path = Join_Path(root, name)
-
-			projects[#projects + 1] = {
-				name = name,
-				path = path,
-			}
-		end
+	if #projects == 0 then
+		Notify("No HyperMax projects found. Convert a folder with :HyperMaxConvert or create a project first.", vim.log.levels.WARN)
+		return
 	end
 
-	table.sort(projects, function(a, b)
-		return a.name:lower() < b.name:lower()
-	end)
-
-	Select_Item(projects, "Choose project", function(project)
-		return project.name
+	Select_Item(projects, "Open HyperMax project (most recently used first)", function(project)
+		local details = project.language and project.language ~= "unknown" and (" [" .. project.language .. "]") or ""
+		local recent = tonumber(project.last_opened) and os.date("%Y-%m-%d %H:%M", project.last_opened) or "not opened yet"
+		return (project.name or vim.fs.basename(project.path)) .. details .. " · " .. recent .. " — " .. project.path
 	end, function(project)
-		if not project then
-			return
-		end
+		if not project then return end
+		local marked, mark_error = Project_Config.Mark_Project_Opened(project.path)
+		if not marked then Notify("Could not update project index: " .. tostring(mark_error), vim.log.levels.WARN) end
+		Config.options.last_project_path = project.path
+		Config.save()
 		vim.cmd("tcd " .. vim.fn.fnameescape(project.path))
 		Dashboard.Open(project.path)
 		Notify("Opened project: " .. project.path)
@@ -1175,36 +1159,30 @@ end
 
 function Project.Open_Last()
 	local options = Config.options or {}
-	local path = options.last_project_path
+	-- The project index is authoritative: converting a folder registers it as
+	-- the latest project even when settings.json still points at an older one.
+	local path = Project_Config.Get_Last_Project()
+	if type(path) ~= "string" or path == "" or not Is_Directory(path) or not Dashboard.Is_Project(path) then
+		path = options.last_project_path
+	end
 
-	-- Check whether a last project has been saved.
 	if type(path) ~= "string" or path == "" then
-		Notify("No last project has been saved yet.", vim.log.levels.WARN)
+		Notify("No registered HyperMax project is available. Press <leader>+p to choose a project.", vim.log.levels.WARN)
 		return
 	end
 
-	-- Convert the saved path into an absolute path.
 	path = vim.fn.fnamemodify(vim.fn.expand(path), ":p")
-
-	-- Check whether the project directory still exists.
-	if not Is_Directory(path) then
-		Notify("Last project directory no longer exists: " .. path, vim.log.levels.ERROR)
+	if not Is_Directory(path) or not Dashboard.Is_Project(path) then
+		Notify("Last project is no longer available: " .. path, vim.log.levels.ERROR)
 		return
 	end
 
-	-- Check whether this is a valid HyperMax project.
-	if not Dashboard.Is_Project(path) then
-		Notify("Last project is not a valid HyperMax project: " .. path, vim.log.levels.ERROR)
-		return
-	end
-
-	-- Switch to the project directory.
+	local marked, mark_error = Project_Config.Mark_Project_Opened(path)
+	if not marked then Notify("Could not update project index: " .. tostring(mark_error), vim.log.levels.WARN) end
+	Config.options.last_project_path = path
+	Config.save()
 	vim.cmd("tcd " .. vim.fn.fnameescape(path))
-
-	-- Always open the dashboard instead of a source file.
-	if Dashboard.Open(path) then
-		Notify("Opened project dashboard: " .. path)
-	end
+	if Dashboard.Open(path) then Notify("Opened project dashboard: " .. path) end
 end
 
 -- =========================================================
@@ -1247,53 +1225,85 @@ local function Scan_Directory(root)
 		description = "",
 		directories = {},
 		files = {},
+		_capture = {
+			root = root,
+			skipped = {},
+			max_file_size = 4 * 1024 * 1024,
+		},
 	}
 
+	-- Repository and HyperMax metadata are never copied into a reusable layout.
+	-- Hidden source/config files (for example .gitignore and .editorconfig) are kept.
 	local ignored = {
 		[".git"] = true,
+		[".hmc"] = true,
 		[".hg"] = true,
 		[".svn"] = true,
 		["node_modules"] = true,
+		["vendor"] = true,
 		["target"] = true,
 		["build"] = true,
 		["dist"] = true,
 		[".venv"] = true,
 		["venv"] = true,
 		["__pycache__"] = true,
-		[".idea"] = true,
-		[".vscode"] = true,
+		[".pytest_cache"] = true,
+		[".mypy_cache"] = true,
+		[".ruff_cache"] = true,
+		[".next"] = true,
+		[".turbo"] = true,
+		[".ssh"] = true,
+		[".aws"] = true,
+		[".gnupg"] = true,
 	}
 
-	local function Walk(directory, relative)
-		local entries = uv.fs_scandir(directory)
+	local function Is_Sensitive_File(name)
+		local lower = name:lower()
+		if lower == ".env.example" or lower == ".env.sample" or lower == ".env.template" then return false end
+		if lower == ".env" or lower:match("^%.env%.") then return true end
+		if lower == ".npmrc" or lower == ".pypirc" or lower == ".netrc" then return true end
+		if lower == "id_rsa" or lower == "id_ed25519" or lower:match("%.pem$") or lower:match("%.p12$") or lower:match("%.pfx$") or lower:match("%.key$") then return true end
+		return false
+	end
 
+	local function Walk(directory, relative)
+		local entries, scan_error = uv.fs_scandir(directory)
 		if not entries then
+			layout._capture.skipped[#layout._capture.skipped + 1] = {
+				path = relative ~= "" and relative or ".",
+				reason = "Could not read directory: " .. tostring(scan_error),
+			}
 			return
 		end
 
 		while true do
 			local name, kind = uv.fs_scandir_next(entries)
+			if not name then break end
 
-			if not name then
-				break
-			end
+			local relative_path = relative == "" and name or (relative .. "/" .. name)
+			local full_path = Join_Path(directory, name)
 
-			if not ignored[name] and name:sub(1, 1) ~= "." then
-				local relative_path = relative == "" and name or (relative .. "/" .. name)
-
-				local full_path = Join_Path(directory, name)
-
+			if not ignored[name] and Is_Safe_Relative_Path(relative_path) then
 				if kind == "directory" then
-					if Is_Safe_Relative_Path(relative_path) then
-						layout.directories[#layout.directories + 1] = relative_path
-
-						Walk(full_path, relative_path)
-					end
-				elseif kind == "file" and Is_Safe_Relative_Path(relative_path) then
-					local contents = Read_File(full_path)
-
-					if contents ~= nil then
-						layout.files[relative_path] = contents
+					layout.directories[#layout.directories + 1] = relative_path
+					Walk(full_path, relative_path)
+				elseif kind == "file" then
+					local stat = uv.fs_stat(full_path)
+					if Is_Sensitive_File(name) then
+						layout._capture.skipped[#layout._capture.skipped + 1] = { path = relative_path, reason = "Potential secret or credential file" }
+					elseif not stat then
+						layout._capture.skipped[#layout._capture.skipped + 1] = { path = relative_path, reason = "Could not stat file" }
+					elseif stat.size > layout._capture.max_file_size then
+						layout._capture.skipped[#layout._capture.skipped + 1] = { path = relative_path, reason = "File exceeds 4 MiB capture limit" }
+					else
+						local contents = Read_File(full_path)
+						if contents == nil then
+							layout._capture.skipped[#layout._capture.skipped + 1] = { path = relative_path, reason = "Could not read file" }
+						elseif contents:find("\0", 1, true) then
+							layout._capture.skipped[#layout._capture.skipped + 1] = { path = relative_path, reason = "Binary file is not included" }
+						else
+							layout.files[relative_path] = contents
+						end
 					end
 				end
 			end
@@ -1301,51 +1311,200 @@ local function Scan_Directory(root)
 	end
 
 	Walk(root, "")
-
+	table.sort(layout.directories)
 	return layout
+end
+
+local function Is_Draft_Buffer(buffer)
+	return vim.api.nvim_buf_is_valid(buffer) and vim.b[buffer].hypermax_layout_draft == true
+end
+
+local function Pretty_JSON(value, depth, force_object)
+	depth = depth or 0
+	local indent = string.rep(" ", depth * 2)
+	local child_indent = string.rep(" ", (depth + 1) * 2)
+
+	if type(value) == "string" then return vim.json.encode(value) end
+	if type(value) == "number" or type(value) == "boolean" then return tostring(value) end
+	if value == nil then return "null" end
+	if type(value) ~= "table" then return "null" end
+
+	local count, max_index, is_array = 0, 0, true
+	for key in pairs(value) do
+		count = count + 1
+		if type(key) ~= "number" or key < 1 or key % 1 ~= 0 then is_array = false else max_index = math.max(max_index, key) end
+	end
+	if count == 0 then return force_object and "{}" or (is_array and "[]" or "{}") end
+	if is_array and max_index ~= count then is_array = false end
+
+	local lines = { is_array and "[" or "{" }
+	if is_array then
+		for index = 1, max_index do
+			lines[#lines + 1] = child_indent .. Pretty_JSON(value[index], depth + 1) .. (index < max_index and "," or "")
+		end
+	else
+		local keys = {}
+		for key in pairs(value) do keys[#keys + 1] = key end
+		table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+		for index, key in ipairs(keys) do
+			local object_value = key == "files" or key == "languages"
+			lines[#lines + 1] = child_indent .. vim.json.encode(tostring(key)) .. ": " .. Pretty_JSON(value[key], depth + 1, object_value) .. (index < #keys and "," or "")
+		end
+	end
+	lines[#lines + 1] = indent .. (is_array and "]" or "}")
+	return table.concat(lines, "\n")
+end
+
+local function Save_Layout_Draft(buffer)
+	if not Is_Draft_Buffer(buffer) then return false, "Current buffer is not a HyperMax layout draft" end
+	local path = vim.api.nvim_buf_get_name(buffer)
+	local contents = table.concat(vim.api.nvim_buf_get_lines(buffer, 0, -1, false), "\n")
+	local decoded_ok, data = pcall(vim.json.decode, contents)
+	if not decoded_ok or type(data) ~= "table" then
+		return false, "The layout draft is not valid JSON: " .. tostring(data)
+	end
+
+	local id = vim.b[buffer].hypermax_layout_id or data.id
+	if type(id) ~= "string" or not id:match("^[%w_-]+$") then return false, "Invalid layout ID in draft" end
+	local layout = {
+		name = data.name,
+		description = data.description or "",
+		directories = data.directories or {},
+		files = data.files or {},
+	}
+	if data.entry ~= nil then layout.entry = data.entry end
+	if data.languages ~= nil then layout.languages = data.languages end
+
+	local ok, err = Layouts.Save(id, layout)
+	if not ok then return false, err end
+	vim.b[buffer].hypermax_layout_saved = true
+	return true, "Saved layout '" .. id .. "' from " .. path
+end
+
+local function Open_Layout_Draft(id, layout)
+	local directory = Join_Path(vim.fn.stdpath("cache"), "hypermax", "layout-drafts")
+	local mkdir_ok = vim.fn.mkdir(directory, "p")
+	if mkdir_ok == 0 and not Is_Directory(directory) then
+		Notify("Could not create layout draft directory: " .. directory, vim.log.levels.ERROR)
+		return
+	end
+
+	local path = Join_Path(directory, id .. ".json")
+	local file, err = io.open(path, "wb")
+	if not file then Notify("Could not create layout draft: " .. tostring(err), vim.log.levels.ERROR); return end
+	file:write(Pretty_JSON(layout), "\n")
+	file:close()
+
+	vim.cmd("edit " .. vim.fn.fnameescape(path))
+	local buffer = vim.api.nvim_get_current_buf()
+	vim.bo[buffer].filetype = "json"
+	vim.b[buffer].hypermax_layout_draft = true
+	vim.b[buffer].hypermax_layout_id = id
+
+	local group = vim.api.nvim_create_augroup("HyperMaxLayoutDraft_" .. id, { clear = true })
+	vim.api.nvim_create_autocmd("BufWritePost", {
+		group = group,
+		buffer = buffer,
+		callback = function(args)
+			local ok, message = Save_Layout_Draft(args.buf)
+			if ok then Notify(message .. " — edit and :write again to update")
+			else Notify("Layout draft was not saved: " .. tostring(message), vim.log.levels.ERROR) end
+		end,
+	})
+
+	vim.api.nvim_buf_create_user_command(buffer, "HyperMaxLayoutSave", function()
+		local ok, message = Save_Layout_Draft(buffer)
+		Notify(ok and message or ("Could not save layout: " .. tostring(message)), ok and vim.log.levels.INFO or vim.log.levels.ERROR)
+	end, { desc = "Validate and save this HyperMax layout draft" })
+	vim.api.nvim_buf_create_user_command(buffer, "HyperMaxLayoutCancel", function()
+		local draft = vim.api.nvim_buf_get_name(buffer)
+		vim.api.nvim_buf_delete(buffer, { force = true })
+		pcall(os.remove, draft)
+		Notify("Layout draft discarded")
+	end, { desc = "Discard this HyperMax layout draft" })
+
+	Notify("Layout draft opened: edit directories/files, then :write or :HyperMaxLayoutSave. :HyperMaxLayoutCancel discards it.")
+end
+
+function Project.Edit_Layout()
+	local choices = {}
+	for _, id in ipairs(Layouts.Get_IDs()) do
+		local layout = Layouts.Get(id)
+		if layout then choices[#choices + 1] = layout end
+	end
+	if #choices == 0 then Notify("No saved layouts to edit", vim.log.levels.WARN); return end
+
+	Select_Item(choices, "Choose layout to edit", function(layout)
+		return (layout.name or layout.id) .. " (" .. layout.id .. ")"
+	end, function(layout)
+		if not layout then return end
+		Open_Layout_Draft(layout.id, {
+			id = layout.id,
+			name = layout.name or layout.id,
+			description = layout.description or "",
+			directories = layout.directories or {},
+			files = layout.files or {},
+			entry = layout.entry,
+			languages = layout.languages,
+		})
+	end)
 end
 
 function Project.Save_Layout()
 	local current = vim.fn.getcwd()
+	local captured = Scan_Directory(current)
+	captured._capture.source = nil
+	captured._capture.root = nil
 
-	Input("Layout ID (letters, numbers, '_' or '-'): ", vim.fn.fnamemodify(current, ":t"), function(id)
+	local defaults = {
+		id = vim.fn.fnamemodify(current, ":t"):lower():gsub("[^%w_-]", "_"):gsub("_+", "_"),
+		name = vim.fn.fnamemodify(current, ":t"),
+		description = "",
+		directories = captured.directories,
+		files = captured.files,
+	}
+
+	-- Capture project-specific language metadata without copying its .hmc files.
+	local project_config = require("hypermax.project_config")
+	if project_config.Exists(current) then
+		local loaded = project_config.Load(current)
+		local project = loaded and loaded.basics and loaded.basics.project or {}
+		if project.language and project.language ~= "unknown" then defaults.languages = { project.language } end
+		local entry_point = project.entry_point or {}
+		local entry = entry_point.file or project.entry_file
+		if type(entry) == "string" and entry ~= "" then defaults.entry = entry end
+	end
+
+	Input("Layout ID (letters, numbers, '_' or '-'): ", defaults.id, function(id)
 		id = vim.trim(id or "")
+		if not id:match("^[%w_-]+$") then Notify("Invalid layout ID.", vim.log.levels.ERROR); return end
 
-		if not id:match("^[%w_-]+$") then
-			Notify("Invalid layout ID.", vim.log.levels.ERROR)
-			return
-		end
-
-		local layout = Scan_Directory(current)
-
-		Input("Layout display name: ", layout.name, function(name)
+		Input("Layout display name: ", defaults.name, function(name)
 			name = vim.trim(name or "")
+			if name == "" then Notify("Layout name cannot be empty.", vim.log.levels.ERROR); return end
 
-			if name == "" then
-				Notify("Layout name cannot be empty.", vim.log.levels.ERROR)
-				return
-			end
+			Input("Description: ", defaults.description, function(description)
+				local draft = {
+				id = id,
+				name = name,
+				description = description or "",
+				directories = defaults.directories,
+				files = defaults.files,
+				_capture = captured._capture,
+			}
+				if defaults.languages then draft.languages = defaults.languages end
+				if defaults.entry then draft.entry = defaults.entry end
 
-			layout.name = name
-
-			Input("Description: ", layout.description, function(description)
-				layout.description = description or ""
-
-				Confirm("Save layout '" .. id .. "' to HyperMax?", function(save)
-					if not save then
-						Notify("Layout save cancelled.")
-						return
-					end
-
-					local ok, err = Layouts.Save(id, layout)
-
-					if not ok then
-						Notify("Could not save layout: " .. tostring(err), vim.log.levels.ERROR)
-						return
-					end
-
-					Notify("Saved layout '" .. id .. "' from " .. current)
-				end)
+				local function Open_Draft()
+					Open_Layout_Draft(id, draft)
+				end
+				if Layouts.Exists(id) then
+					Confirm("Layout '" .. id .. "' already exists. Replace it after editing the draft?", function(confirmed)
+						if confirmed then Open_Draft() end
+					end)
+				else
+					Open_Draft()
+				end
 			end)
 		end)
 	end)

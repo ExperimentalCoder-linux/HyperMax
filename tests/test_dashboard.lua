@@ -224,6 +224,9 @@ Test("Project metadata: basics.json records the entry file and main function", f
 	main_file:close()
 
 	local Project_Config = require("hypermax.project_config")
+	local original_global_path = Project_Config.global_path
+	local registry_root = vim.fn.fnamemodify(vim.fn.tempname(), ":p")
+	Project_Config.global_path = registry_root .. "/hypermax/config.json"
 	local ok, result = Project_Config.Create(Root, {
 		name = "EntryPointTest",
 		language = "c",
@@ -238,6 +241,8 @@ Test("Project metadata: basics.json records the entry file and main function", f
 	Assert(loaded.basics.project.entry_point.file == "src/main.c", "basics.json should record the entry file")
 	Assert(loaded.basics.project.entry_point["function"] == "main", "basics.json should record the main function")
 
+	Project_Config.global_path = original_global_path
+	Remove_Test_Directory(registry_root)
 	Remove_Test_Directory(Root)
 end)
 
@@ -367,3 +372,6 @@ if Failed > 0 then
 end
 
 print("All dashboard runtime tests passed!")
+
+Project_Config.global_path = original_global_path
+pcall(vim.fn.delete, test_global_root, "rf")
