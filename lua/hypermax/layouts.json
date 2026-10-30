@@ -3,268 +3,3083 @@
   "defaults": {
     "directories": [
       "src",
+      "include",
       "tests",
-      "docs"
+      "docs",
+      "assets",
+      "build"
     ],
     "files": {
-      "README.md": "# {{PROJECT_NAME}}\n\n## Overview\n\nDescribe your project here.\n\n## Requirements\n\nInstall the required compiler, interpreter, or build tools.\n\n## Build\n\n{{BUILD_COMMAND}}\n\n## Run\n\n{{RUN_COMMAND}}\n\n## Test\n\n{{TEST_COMMAND}}\n\n## Clean\n\n{{CLEAN_COMMAND}}\n",
-      ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
-      "docs/DESIGN.md": "# Design\n\nDocument the architecture and important decisions here.\n",
-      "tests/README.md": "# Tests\n\nDocument the test strategy and how to run tests.\n"
+      "README.md": "# {{PROJECT_NAME}}\n\n## Overview\n\nDescribe the purpose, scope, and main features of this project.\n\n## Requirements\n\nInstall the toolchain listed for the selected language and any project dependencies.\n\n## Build\n\n```sh\n{{BUILD_COMMAND}}\n```\n\n## Run\n\n```sh\n{{RUN_COMMAND}}\n```\n\n## Test\n\n```sh\n{{TEST_COMMAND}}\n```\n\n## Clean\n\n```sh\n{{CLEAN_COMMAND}}\n```\n\n## Project structure\n\nDescribe the source, tests, documentation, and asset directories.\n",
+      ".gitignore": "build/\ndist/\nout/\ntarget/\n*.o\n*.obj\n*.a\n*.so\n*.dll\n*.dylib\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n*.log\n__pycache__/\n*.py[cod]\n.venv/\nvenv/\nnode_modules/\n.dart_tool/\n.build/\n.zig-cache/\n",
+      "docs/DESIGN.md": "# Design\n\n## Architecture\n\nDocument the architecture, modules, and responsibilities.\n\n## Decisions\n\nRecord important technical decisions and their rationale.\n",
+      "tests/README.md": "# Tests\n\nDocument the test framework, test organization, fixtures, and the command used to run the test suite.\n"
     }
   },
   "credits": {
     "path": "CREDITS.md",
-    "content": "# Credits\n\nGenerated with HyperMax.nvim.\n\n## Project creator\n\nAdd your name here.\n\n## Dependencies\n\nList third-party libraries, authors, and licenses here.\n\n## Tools\n\nList compilers, interpreters, and development tools used.\n\n## License\n\nSpecify your project license here.\n"
+    "content": "# Credits\n\nGenerated with HyperMax.nvim.\n\n## Project creator\n\nNot specified. Replace this line with the project creator's name.\n\n## Dependencies\n\nList third-party libraries, authors, versions, and licenses. Use `None` when the project has no third-party dependencies.\n\n## Tools\n\nList the compiler, interpreter, runtime, build system, and development tools used by this project.\n\n## License\n\nNot specified. Choose a license before distributing the project.\n"
   },
   "languages": {
-    "ada": {},
-    "assembly": {},
-    "awk": {},
-    "apex": {},
-    "actionscript": {},
-    "bash": {},
-    "basic": {},
-    "bc": {},
-    "blitzBasic": {},
-    "boo": {},
-    "c": {
-      "build": "cc -std=c11 -Wall -Wextra -Wpedantic src/main.c -o build/app",
+    "ada": {
+      "build": "gnatmake -D build src/main.adb -o build/app",
       "run": "./build/app",
-      "test": "make test",
+      "test": "gnatmake -D build tests/test_main.adb -o build/test && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "assembly": {
+      "build": "mkdir -p build && as --64 src/main.s -o build/main.o && ld build/main.o -o build/app",
+      "run": "./build/app",
+      "test": "as --64 tests/test_main.s -o build/test.o && ld build/test.o -o build/test && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "awk": {
+      "build": "awk -f src/main.awk </dev/null",
+      "run": "awk -f src/main.awk",
+      "test": "awk -f tests/test_main.awk </dev/null",
+      "clean": "rm -rf build"
+    },
+    "apex": {
+      "build": "mkdir -p build && sf apex run --file src/HelloWorld.apex",
+      "run": "sf apex run --file src/HelloWorld.apex",
+      "test": "sf apex run test --tests HelloWorldTest",
+      "clean": "rm -rf build"
+    },
+    "actionscript": {
+      "build": "mxmlc -source-path=src -output=build/app.swf src/Main.as",
+      "run": "flashplayer build/app.swf",
+      "test": "mxmlc -source-path=tests -output=build/tests.swf tests/TestMain.as",
+      "clean": "rm -rf build"
+    },
+    "bash": {
+      "build": "bash -n src/main.sh",
+      "run": "bash src/main.sh",
+      "test": "bash tests/test_main.sh",
+      "clean": "rm -rf build"
+    },
+    "basic": {
+      "build": "fbc -x build/app src/main.bas",
+      "run": "./build/app",
+      "test": "fbc -x build/test tests/test_main.bas && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "bc": {
+      "build": "mkdir -p build && cp src/main.bc build/main.bc",
+      "run": "bc src/main.bc",
+      "test": "bc tests/test_main.bc",
+      "clean": "rm -rf build"
+    },
+    "blitzBasic": {
+      "build": "mkdir -p build && bcc src/main.bb -o build/app",
+      "run": "./build/app",
+      "test": "bcc tests/test_main.bb -o build/test && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "boo": {
+      "build": "booc src/Program.boo -out:build/app.exe",
+      "run": "mono build/app.exe",
+      "test": "booc tests/TestProgram.boo -out:build/tests.exe && mono build/tests.exe",
+      "clean": "rm -rf build"
+    },
+    "c": {
+      "build": "cc -std=c11 -Wall -Wextra -Wpedantic -Iinclude src/main.c -o build/app",
+      "run": "./build/app",
+      "test": "cc -std=c11 -Wall -Wextra -Wpedantic -Iinclude tests/test_main.c -o build/test && ./build/test",
       "clean": "rm -rf build"
     },
     "cpp": {
-      "build": "c++ -std=c++17 -Wall -Wextra -Wpedantic src/main.cpp -o build/app",
+      "build": "c++ -std=c++20 -Wall -Wextra -Wpedantic -Iinclude src/main.cpp -o build/app",
       "run": "./build/app",
-      "test": "make test",
+      "test": "c++ -std=c++20 -Wall -Wextra -Wpedantic -Iinclude tests/test_main.cpp -o build/test && ./build/test",
       "clean": "rm -rf build"
     },
-    "csharp": {},
-    "clojure": {},
-    "cobol": {},
-    "crystal": {},
-    "cuda": {},
-    "coffeescript": {},
-    "commonLisp": {},
-    "d": {},
-    "dart": {},
-    "delphi": {},
-    "dylan": {},
-    "eiffel": {},
-    "elixir": {},
-    "elm": {},
-    "erlang": {},
-    "erlangHeader": {},
-    "factor": {},
-    "fennel": {},
-    "forth": {},
-    "fortran": {},
-    "fsharp": {},
-    "gleam": {},
-    "glsl": {},
+    "csharp": {
+      "build": "dotnet build -o build",
+      "run": "dotnet build -o build && dotnet build/app.dll",
+      "test": "dotnet test",
+      "clean": "rm -rf build bin obj"
+    },
+    "clojure": {
+      "build": "clojure -T:build uber",
+      "run": "clojure -M -m app.core",
+      "test": "clojure -M:test",
+      "clean": "rm -rf build target"
+    },
+    "cobol": {
+      "build": "mkdir -p build && cobc -x -o build/app src/main.cob",
+      "run": "./build/app",
+      "test": "cobc -x -o build/test tests/test_main.cob && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "crystal": {
+      "build": "crystal build src/main.cr -o build/app",
+      "run": "./build/app",
+      "test": "crystal spec",
+      "clean": "rm -rf build"
+    },
+    "cuda": {
+      "build": "nvcc src/main.cu -o build/app",
+      "run": "./build/app",
+      "test": "nvcc tests/test_main.cu -o build/test && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "coffeescript": {
+      "build": "coffee --compile --output build src",
+      "run": "coffee src/main.coffee",
+      "test": "node --test tests",
+      "clean": "rm -rf build dist"
+    },
+    "commonLisp": {
+      "build": "sbcl --noinform --non-interactive --eval '(compile-file \"src/main.lisp\" :output-file \"build/main.fasl\")'",
+      "run": "sbcl --script src/main.lisp",
+      "test": "sbcl --script tests/test_main.lisp",
+      "clean": "rm -rf build"
+    },
+    "d": {
+      "build": "dmd -of=build/app src/app.d",
+      "run": "./build/app",
+      "test": "dub test",
+      "clean": "rm -rf build"
+    },
+    "dart": {
+      "build": "dart compile exe src/main.dart -o build/app",
+      "run": "dart run src/main.dart",
+      "test": "dart test",
+      "clean": "rm -rf build .dart_tool"
+    },
+    "delphi": {
+      "build": "mkdir -p build && fpc -FEbuild src/Project.dpr",
+      "run": "./build/Project",
+      "test": "fpc -FEbuild tests/TestProject.dpr && ./build/TestProject",
+      "clean": "rm -rf build"
+    },
+    "dylan": {
+      "build": "mkdir -p build && dylan-compiler -build app.lid",
+      "run": "build/app",
+      "test": "dylan-compiler -build tests/tests.lid && build/tests",
+      "clean": "rm -rf build"
+    },
+    "eiffel": {
+      "build": "ec -config src/application.ecf -target application -output build",
+      "run": "./build/application",
+      "test": "ec -config tests/tests.ecf -target tests -output build/tests && ./build/tests",
+      "clean": "rm -rf build"
+    },
+    "elixir": {
+      "build": "mix compile",
+      "run": "mix run src/main.ex",
+      "test": "mix test",
+      "clean": "rm -rf build _build deps"
+    },
+    "elm": {
+      "build": "elm make src/Main.elm --output=build/main.js",
+      "run": "elm reactor",
+      "test": "elm-test",
+      "clean": "rm -rf build elm-stuff"
+    },
+    "erlang": {
+      "build": "mkdir -p build && erlc -o build src/*.erl",
+      "run": "erl -pa build -noshell -s main start -s init stop",
+      "test": "erlc -o build tests/*.erl && erl -pa build -noshell -s main_tests test -s init stop",
+      "clean": "rm -rf build"
+    },
+    "erlangHeader": {
+      "build": "mkdir -p build && erlc -I src -o build src/*.erl",
+      "run": "erl -pa build -noshell -s main start -s init stop",
+      "test": "erlc -I src -o build tests/*.erl",
+      "clean": "rm -rf build"
+    },
+    "factor": {
+      "build": "factor -roots=src -run=main",
+      "run": "factor -roots=src -run=main",
+      "test": "factor -roots=tests -run=tests",
+      "clean": "rm -rf build"
+    },
+    "fennel": {
+      "build": "fennel --compile src/main.fnl > build/main.lua",
+      "run": "fennel src/main.fnl",
+      "test": "fennel tests/test_main.fnl",
+      "clean": "rm -rf build"
+    },
+    "forth": {
+      "build": "gforth src/main.fs -e bye",
+      "run": "gforth src/main.fs",
+      "test": "gforth tests/test_main.fs",
+      "clean": "rm -rf build"
+    },
+    "fortran": {
+      "build": "gfortran -Wall -Wextra src/main.f90 -o build/app",
+      "run": "./build/app",
+      "test": "gfortran tests/test_main.f90 -o build/test && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "fsharp": {
+      "build": "dotnet build -o build",
+      "run": "dotnet build -o build && dotnet build/app.dll",
+      "test": "dotnet test",
+      "clean": "rm -rf build bin obj"
+    },
+    "gleam": {
+      "build": "gleam build",
+      "run": "gleam run",
+      "test": "gleam test",
+      "clean": "rm -rf build"
+    },
+    "glsl": {
+      "build": "glslangValidator -V src/main.frag -o build/main.spv",
+      "run": "echo 'GLSL shaders are loaded by a graphics host application.'",
+      "test": "glslangValidator -S frag tests/test.frag",
+      "clean": "rm -rf build"
+    },
     "go": {
       "build": "go build -o build/app ./src",
       "run": "go run ./src",
       "test": "go test ./...",
       "clean": "rm -rf build"
     },
-    "groovy": {},
-    "gml": {},
-    "hack": {},
-    "haskell": {},
-    "haxe": {},
-    "hlsl": {},
-    "hy": {},
-    "icon": {},
-    "idris": {},
-    "inform": {},
-    "io": {},
-    "janet": {},
-    "java": {},
+    "groovy": {
+      "build": "groovyc -d build src/Main.groovy",
+      "run": "groovy src/Main.groovy",
+      "test": "groovy tests/test_main.groovy",
+      "clean": "rm -rf build"
+    },
+    "gml": {
+      "build": "mkdir -p build && echo 'GameMaker projects are built with GameMaker IDE/CLI.'",
+      "run": "echo 'Run the project with GameMaker.'",
+      "test": "echo 'Run project tests in the GameMaker test runner.'",
+      "clean": "rm -rf build"
+    },
+    "hack": {
+      "build": "hhvm --lint src/main.hack",
+      "run": "hhvm src/main.hack",
+      "test": "hhvm tests/test_main.hack",
+      "clean": "rm -rf build"
+    },
+    "haskell": {
+      "build": "ghc -Wall -isrc src/Main.hs -o build/app",
+      "run": "runghc -isrc src/Main.hs",
+      "test": "cabal test",
+      "clean": "rm -rf build dist-newstyle"
+    },
+    "haxe": {
+      "build": "haxe -cp src -main Main -js build/app.js",
+      "run": "node build/app.js",
+      "test": "haxe -cp tests -main TestMain --interp",
+      "clean": "rm -rf build"
+    },
+    "hlsl": {
+      "build": "mkdir -p build && dxc -T ps_6_0 -E main src/main.hlsl -Fo build/main.dxil",
+      "run": "echo 'HLSL shaders are loaded by a graphics host application.'",
+      "test": "dxc -T ps_6_0 -E main tests/test.hlsl -Fo build/test.dxil",
+      "clean": "rm -rf build"
+    },
+    "hy": {
+      "build": "python3 -m compileall -q src",
+      "run": "hy src/main.hy",
+      "test": "hy tests/test_main.hy",
+      "clean": "rm -rf build __pycache__ src/__pycache__"
+    },
+    "icon": {
+      "build": "icont -o build/app src/main.icn",
+      "run": "./build/app",
+      "test": "icont -o build/test tests/test_main.icn && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "idris": {
+      "build": "idris2 --build app.ipkg",
+      "run": "idris2 --exec main src/Main.idr",
+      "test": "idris2 --build tests/tests.ipkg",
+      "clean": "rm -rf build"
+    },
+    "inform": {
+      "build": "inform6 src/main.inf build/main.z8",
+      "run": "frotz build/main.z8",
+      "test": "inform6 tests/test.inf build/test.z8",
+      "clean": "rm -rf build"
+    },
+    "io": {
+      "build": "mkdir -p build && cp src/main.io build/main.io",
+      "run": "io src/main.io",
+      "test": "io tests/test_main.io",
+      "clean": "rm -rf build"
+    },
+    "janet": {
+      "build": "janet -c src/main.janet build/main.jimage",
+      "run": "janet src/main.janet",
+      "test": "janet tests/test_main.janet",
+      "clean": "rm -rf build"
+    },
+    "java": {
+      "build": "javac -d build src/Main.java",
+      "run": "java -cp build Main",
+      "test": "javac -d build tests/*.java && java -cp build TestMain",
+      "clean": "rm -rf build"
+    },
     "javaScript": {
       "build": "node --check src/main.js",
       "run": "node src/main.js",
       "test": "node --test",
-      "clean": "rm -rf build dist"
+      "clean": "rm -rf build dist coverage"
     },
-    "julia": {},
-    "j": {},
-    "k": {},
-    "kotlin": {},
-    "koka": {},
-    "lean": {},
-    "less": {},
-    "lisp": {},
-    "logo": {},
+    "julia": {
+      "build": "julia --compile=min -e 'include(\"src/main.jl\")'",
+      "run": "julia src/main.jl",
+      "test": "julia tests/runtests.jl",
+      "clean": "rm -rf build"
+    },
+    "j": {
+      "build": "jconsole -js 'load ''src/main.ijs'''",
+      "run": "jconsole src/main.ijs",
+      "test": "jconsole tests/test_main.ijs",
+      "clean": "rm -rf build"
+    },
+    "k": {
+      "build": "mkdir -p build && cp src/main.k build/main.k",
+      "run": "k src/main.k",
+      "test": "k tests/test_main.k",
+      "clean": "rm -rf build"
+    },
+    "kotlin": {
+      "build": "kotlinc src -include-runtime -d build/app.jar",
+      "run": "java -jar build/app.jar",
+      "test": "kotlinc src tests -include-runtime -d build/tests.jar && java -jar build/tests.jar",
+      "clean": "rm -rf build"
+    },
+    "koka": {
+      "build": "koka --build src/main.kk -o build/app",
+      "run": "./build/app",
+      "test": "koka --test tests/test_main.kk",
+      "clean": "rm -rf build"
+    },
+    "lean": {
+      "build": "lean --run src/Main.lean",
+      "run": "lean --run src/Main.lean",
+      "test": "lean --run tests/TestMain.lean",
+      "clean": "rm -rf build"
+    },
+    "less": {
+      "build": "lessc src/main.less build/main.css",
+      "run": "echo 'CSS output: build/main.css'",
+      "test": "lessc --lint src/main.less",
+      "clean": "rm -rf build"
+    },
+    "lisp": {
+      "build": "sbcl --noinform --non-interactive --eval '(compile-file \"src/main.lisp\" :output-file \"build/main.fasl\")'",
+      "run": "sbcl --script src/main.lisp",
+      "test": "sbcl --script tests/test_main.lisp",
+      "clean": "rm -rf build"
+    },
+    "logo": {
+      "build": "mkdir -p build && cp src/main.logo build/main.logo",
+      "run": "ucblogo src/main.logo",
+      "test": "ucblogo tests/test_main.logo",
+      "clean": "rm -rf build"
+    },
     "lua": {
       "build": "luac -p src/main.lua",
       "run": "lua src/main.lua",
       "test": "lua tests/test_main.lua",
       "clean": "rm -rf build"
     },
-    "maple": {},
-    "matlab": {},
-    "mercury": {},
-    "mojo": {},
-    "move": {},
-    "neon": {},
-    "nesC": {},
-    "nim": {},
-    "nix": {},
-    "oberon": {},
-    "objectiveC": {},
-    "objectiveCpp": {},
-    "ocaml": {},
-    "odin": {},
-    "pascal": {},
-    "perl": {},
-    "php": {},
-    "pony": {},
-    "processing": {},
-    "prolog": {},
-    "purescript": {},
+    "maple": {
+      "build": "mkdir -p build && cp src/main.mpl build/main.mpl",
+      "run": "maple -q src/main.mpl",
+      "test": "maple -q tests/test_main.mpl",
+      "clean": "rm -rf build"
+    },
+    "matlab": {
+      "build": "mkdir -p build && cp src/main.m build/main.m",
+      "run": "matlab -batch \"run('src/main.m')\"",
+      "test": "matlab -batch \"runtests('tests')\"",
+      "clean": "rm -rf build"
+    },
+    "mercury": {
+      "build": "mmc --make --output-dir build src/main.m",
+      "run": "./build/main",
+      "test": "mmc --make --output-dir build tests/test_main.m && ./build/test_main",
+      "clean": "rm -rf build"
+    },
+    "mojo": {
+      "build": "mojo build src/main.mojo -o build/app",
+      "run": "mojo src/main.mojo",
+      "test": "mojo test",
+      "clean": "rm -rf build"
+    },
+    "move": {
+      "build": "sui move build",
+      "run": "sui move test",
+      "test": "sui move test",
+      "clean": "rm -rf build"
+    },
+    "neon": {
+      "build": "echo 'NEON is a configuration format; validate with a NEON-aware application or parser.'",
+      "run": "echo 'NEON files are consumed by the host application.'",
+      "test": "echo 'Validate configuration with the consuming application.'",
+      "clean": "rm -rf build"
+    },
+    "nesC": {
+      "build": "nescc -o build/app src/main.nc",
+      "run": "echo 'Deploy the compiled image to the target mote using its platform tools.'",
+      "test": "nescc -fnesc-cfile=build/test.c tests/test_main.nc",
+      "clean": "rm -rf build"
+    },
+    "nim": {
+      "build": "nim c -o:build/app src/main.nim",
+      "run": "./build/app",
+      "test": "nim c -r tests/test_main.nim",
+      "clean": "rm -rf build"
+    },
+    "nix": {
+      "build": "nix-instantiate src/default.nix -o build/result",
+      "run": "nix-build src/default.nix",
+      "test": "nix flake check",
+      "clean": "rm -rf build result"
+    },
+    "oberon": {
+      "build": "mkdir -p build && obc -o build/app src/Main.Mod",
+      "run": "./build/app",
+      "test": "obc -o build/test tests/TestMain.Mod && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "objectiveC": {
+      "build": "clang -fobjc-arc src/main.m -o build/app",
+      "run": "./build/app",
+      "test": "clang -fobjc-arc tests/test_main.m -o build/test && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "objectiveCpp": {
+      "build": "clang++ -std=c++17 -fobjc-arc src/main.mm -o build/app",
+      "run": "./build/app",
+      "test": "clang++ -std=c++17 -fobjc-arc tests/test_main.mm -o build/test && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "ocaml": {
+      "build": "ocamlc -o build/app src/main.ml",
+      "run": "./build/app",
+      "test": "ocamlc -o build/test tests/test_main.ml && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "odin": {
+      "build": "odin build src -out:build/app",
+      "run": "./build/app",
+      "test": "odin test tests",
+      "clean": "rm -rf build"
+    },
+    "pascal": {
+      "build": "fpc -FEbuild -FUbuild src/main.pas",
+      "run": "./build/main",
+      "test": "fpc -FEbuild -FUbuild tests/test_main.pas && ./build/test_main",
+      "clean": "rm -rf build"
+    },
+    "perl": {
+      "build": "perl -c src/main.pl",
+      "run": "perl src/main.pl",
+      "test": "prove -v tests",
+      "clean": "rm -rf build"
+    },
+    "php": {
+      "build": "php -l src/main.php",
+      "run": "php src/main.php",
+      "test": "php tests/test_main.php",
+      "clean": "rm -rf build"
+    },
+    "pony": {
+      "build": "ponyc src -o build",
+      "run": "./build/main",
+      "test": "ponyc tests -o build && ./build/tests",
+      "clean": "rm -rf build"
+    },
+    "processing": {
+      "build": "processing-java --sketch=$(pwd)/src --output=$(pwd)/build --build",
+      "run": "processing-java --sketch=$(pwd)/src --output=$(pwd)/build --run",
+      "test": "processing-java --sketch=$(pwd)/tests --output=$(pwd)/build/tests --build",
+      "clean": "rm -rf build"
+    },
+    "prolog": {
+      "build": "swipl -q -g \"consult('src/main.pl'),halt\"",
+      "run": "swipl -q -s src/main.pl -g main -t halt",
+      "test": "swipl -q -s tests/test_main.pl -g run_tests -t halt",
+      "clean": "rm -rf build"
+    },
+    "purescript": {
+      "build": "spago build",
+      "run": "spago run",
+      "test": "spago test",
+      "clean": "rm -rf build output .spago"
+    },
     "python": {
       "build": "python3 -m compileall -q src",
       "run": "python3 src/main.py",
-      "test": "python3 -m unittest discover -s tests",
+      "test": "python3 -m unittest discover -s tests -v",
       "clean": "rm -rf build dist __pycache__ src/__pycache__ tests/__pycache__"
     },
-    "qsharp": {},
-    "qml": {},
-    "quakeC": {},
-    "r": {},
-    "racket": {},
-    "rexx": {},
-    "roc": {},
-    "ruby": {},
+    "qsharp": {
+      "build": "dotnet build -o build",
+      "run": "dotnet run --project src",
+      "test": "dotnet test",
+      "clean": "rm -rf build bin obj"
+    },
+    "qml": {
+      "build": "qmlformat --inplace src/Main.qml",
+      "run": "qmlscene src/Main.qml",
+      "test": "echo 'Add Qt Quick Test cases and run them with qmltestrunner.'",
+      "clean": "rm -rf build"
+    },
+    "quakeC": {
+      "build": "fteqcc -src src/main.qc -o build/progs.dat",
+      "run": "echo 'Load build/progs.dat in a compatible Quake engine.'",
+      "test": "fteqcc -src tests/test_main.qc -o build/test.dat",
+      "clean": "rm -rf build"
+    },
+    "r": {
+      "build": "Rscript -e \"parse(file='src/main.R')\"",
+      "run": "Rscript src/main.R",
+      "test": "Rscript -e \"testthat::test_dir('tests')\"",
+      "clean": "rm -rf build"
+    },
+    "racket": {
+      "build": "raco make src/main.rkt",
+      "run": "racket src/main.rkt",
+      "test": "raco test tests",
+      "clean": "rm -rf build compiled"
+    },
+    "rexx": {
+      "build": "mkdir -p build && cp src/main.rexx build/main.rexx",
+      "run": "regina src/main.rexx",
+      "test": "regina tests/test_main.rexx",
+      "clean": "rm -rf build"
+    },
+    "roc": {
+      "build": "roc check src/main.roc",
+      "run": "roc run src/main.roc",
+      "test": "roc test src/main.roc",
+      "clean": "rm -rf build"
+    },
+    "ruby": {
+      "build": "ruby -c src/main.rb",
+      "run": "ruby src/main.rb",
+      "test": "ruby -Itest -e 'Dir[\"tests/**/*_test.rb\"].each { |f| require_relative f }'",
+      "clean": "rm -rf build coverage"
+    },
     "rust": {
       "build": "cargo build",
       "run": "cargo run",
       "test": "cargo test",
       "clean": "cargo clean"
     },
-    "scala": {},
-    "scheme": {},
-    "smalltalk": {},
-    "solidity": {},
-    "sql": {},
-    "squirrel": {},
-    "swift": {},
-    "tcl": {},
-    "terra": {},
-    "typescript": {},
-    "typst": {},
-    "unison": {},
-    "ur": {},
-    "vala": {},
-    "v": {},
-    "verilog": {},
-    "vhdl": {},
-    "vimScript": {},
-    "visualBasic": {},
-    "wren": {},
-    "wolfram": {},
-    "x10": {},
-    "yorick": {},
-    "zig": {},
-    "zsh": {}
+    "scala": {
+      "build": "sbt compile",
+      "run": "sbt run",
+      "test": "sbt test",
+      "clean": "rm -rf build target project/target"
+    },
+    "scheme": {
+      "build": "echo 'Scheme is interpreted; use the selected Scheme implementation for validation.'",
+      "run": "guile src/main.scm",
+      "test": "guile tests/test_main.scm",
+      "clean": "rm -rf build"
+    },
+    "smalltalk": {
+      "build": "gst -f src/main.st",
+      "run": "gst -f src/main.st",
+      "test": "gst -f tests/test_main.st",
+      "clean": "rm -rf build"
+    },
+    "solidity": {
+      "build": "solc --bin --abi src/Hello.sol -o build",
+      "run": "echo 'Deploy or execute the contract with a local EVM such as Anvil.'",
+      "test": "forge test",
+      "clean": "rm -rf build out cache"
+    },
+    "sql": {
+      "build": "echo 'SQL is executed by a database engine; no standalone compilation step.'",
+      "run": "sqlite3 build/app.db < src/main.sql",
+      "test": "sqlite3 :memory: < tests/test_main.sql",
+      "clean": "rm -rf build"
+    },
+    "squirrel": {
+      "build": "mkdir -p build && cp src/main.nut build/main.nut",
+      "run": "sq src/main.nut",
+      "test": "sq tests/test_main.nut",
+      "clean": "rm -rf build"
+    },
+    "swift": {
+      "build": "swiftc src/main.swift -o build/app",
+      "run": "swift src/main.swift",
+      "test": "swift test",
+      "clean": "rm -rf build .build"
+    },
+    "tcl": {
+      "build": "tclsh src/main.tcl </dev/null",
+      "run": "tclsh src/main.tcl",
+      "test": "tclsh tests/test_main.tcl",
+      "clean": "rm -rf build"
+    },
+    "terra": {
+      "build": "terra src/main.t -o build/app",
+      "run": "./build/app",
+      "test": "terra tests/test_main.t",
+      "clean": "rm -rf build"
+    },
+    "typescript": {
+      "build": "tsc --project tsconfig.json",
+      "run": "node build/main.js",
+      "test": "node --test build/tests",
+      "clean": "rm -rf build dist"
+    },
+    "typst": {
+      "build": "typst compile src/main.typ build/main.pdf",
+      "run": "echo 'Open build/main.pdf to view the document.'",
+      "test": "typst compile tests/test_main.typ build/test.pdf",
+      "clean": "rm -rf build"
+    },
+    "unison": {
+      "build": "ucm -c 'load src'",
+      "run": "ucm -c 'run main'",
+      "test": "ucm -c 'test'",
+      "clean": "rm -rf build .unison"
+    },
+    "ur": {
+      "build": "urweb -dbms sqlite -db build/app.db src/main.ur",
+      "run": "echo 'Run the generated Ur/Web server using the configured deployment command.'",
+      "test": "echo 'Add Ur/Web test scripts for the application.'",
+      "clean": "rm -rf build"
+    },
+    "vala": {
+      "build": "valac -o build/app src/main.vala",
+      "run": "./build/app",
+      "test": "valac -o build/test tests/test_main.vala && ./build/test",
+      "clean": "rm -rf build"
+    },
+    "v": {
+      "build": "v -o build/app src/main.v",
+      "run": "./build/app",
+      "test": "v test tests",
+      "clean": "rm -rf build"
+    },
+    "verilog": {
+      "build": "iverilog -g2012 -o build/sim src/main.v",
+      "run": "vvp build/sim",
+      "test": "iverilog -g2012 -o build/test tests/test_main.v && vvp build/test",
+      "clean": "rm -rf build"
+    },
+    "vhdl": {
+      "build": "ghdl -a --workdir=build src/main.vhd && ghdl -e --workdir=build main",
+      "run": "ghdl -r --workdir=build main",
+      "test": "ghdl -a --workdir=build tests/test_main.vhd && ghdl -e --workdir=build test_main && ghdl -r --workdir=build test_main",
+      "clean": "rm -rf build"
+    },
+    "vimScript": {
+      "build": "vim -Nu NONE -n -es -S src/main.vim",
+      "run": "vim -Nu NONE -n -es -S src/main.vim",
+      "test": "vim -Nu NONE -n -es -S tests/test_main.vim",
+      "clean": "rm -rf build"
+    },
+    "visualBasic": {
+      "build": "dotnet build -o build",
+      "run": "dotnet run --project src",
+      "test": "dotnet test",
+      "clean": "rm -rf build bin obj"
+    },
+    "wren": {
+      "build": "mkdir -p build && cp src/main.wren build/main.wren",
+      "run": "wren src/main.wren",
+      "test": "wren tests/test_main.wren",
+      "clean": "rm -rf build"
+    },
+    "wolfram": {
+      "build": "wolframscript -script src/main.wls",
+      "run": "wolframscript -script src/main.wls",
+      "test": "wolframscript -script tests/test_main.wls",
+      "clean": "rm -rf build"
+    },
+    "x10": {
+      "build": "x10c -d build src/Main.x10",
+      "run": "x10 -cp build Main",
+      "test": "x10c -d build tests/TestMain.x10 && x10 -cp build TestMain",
+      "clean": "rm -rf build"
+    },
+    "yorick": {
+      "build": "yorick -batch -i src/main.i",
+      "run": "yorick -i src/main.i",
+      "test": "yorick -batch -i tests/test_main.i",
+      "clean": "rm -rf build"
+    },
+    "zig": {
+      "build": "zig build",
+      "run": "zig build run",
+      "test": "zig build test",
+      "clean": "rm -rf build .zig-cache zig-out"
+    },
+    "zsh": {
+      "build": "zsh -n src/main.zsh",
+      "run": "zsh src/main.zsh",
+      "test": "zsh tests/test_main.zsh",
+      "clean": "rm -rf build"
+    }
   },
   "layouts": {
-    "cpp_engine": {
-      "name": "C++ Engine",
-      "description": "C++ engine with source, headers, assets, tests, and CMake",
+    "ada_project": {
+      "name": "ada Project",
+      "description": "Starter ada project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "ada"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.adb",
+      "files": {
+        "src/main.adb": "with Ada.Text_IO; use Ada.Text_IO;\nprocedure Main is\nbegin\n   Put_Line (\"Hello, World!\");\nend Main;\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "assembly_project": {
+      "name": "assembly Project",
+      "description": "Starter assembly project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "assembly"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.s",
+      "files": {
+        "src/main.s": ".global _start\n.section .text\n_start:\n    mov $1, %rax\n    mov $1, %rdi\n    mov $message, %rsi\n    mov $message_len, %rdx\n    syscall\n    mov $60, %rax\n    xor %rdi, %rdi\n    syscall\n.section .rodata\nmessage: .ascii \"Hello, World!\\n\"\nmessage_len = . - message\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "awk_project": {
+      "name": "awk Project",
+      "description": "Starter awk project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "awk"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.awk",
+      "files": {
+        "src/main.awk": "BEGIN { print \"Hello, World!\" }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "apex_project": {
+      "name": "apex Project",
+      "description": "Starter apex project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "apex"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/HelloWorld.cls",
+      "files": {
+        "src/HelloWorld.cls": "System.debug('Hello, World!');\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "actionscript_project": {
+      "name": "actionscript Project",
+      "description": "Starter actionscript project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "actionscript"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Main.as",
+      "files": {
+        "src/Main.as": "package {\n    import flash.display.Sprite;\n    public class Main extends Sprite {\n        public function Main() { trace(\"Hello, World!\"); }\n    }\n}\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "bash_project": {
+      "name": "bash Project",
+      "description": "Starter bash project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "bash"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.sh",
+      "files": {
+        "src/main.sh": "#!/usr/bin/env bash\nset -euo pipefail\nprintf '%s\\n' 'Hello, World!'\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "basic_project": {
+      "name": "basic Project",
+      "description": "Starter basic project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "basic"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.bas",
+      "files": {
+        "src/main.bas": "Print \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "bc_project": {
+      "name": "bc Project",
+      "description": "Starter bc project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "bc"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.bc",
+      "files": {
+        "src/main.bc": "scale=2\nprint \"Hello, World!\\n\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "blitzBasic_project": {
+      "name": "blitzBasic Project",
+      "description": "Starter blitzBasic project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "blitzBasic"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.bb",
+      "files": {
+        "src/main.bb": "Graphics 640,480\nPrint \"Hello, World!\"\nWaitKey\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "boo_project": {
+      "name": "boo Project",
+      "description": "Starter boo project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "boo"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Program.boo",
+      "files": {
+        "src/Program.boo": "print \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "c_project": {
+      "name": "c Project",
+      "description": "Starter c project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "c"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build",
+        "include"
+      ],
+      "entry": "src/main.c",
+      "files": {
+        "src/main.c": "#include <stdio.h>\nint main(void) { puts(\"Hello, World!\"); return 0; }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "include/.gitkeep": "",
+        "CMakeLists.txt": "cmake_minimum_required(VERSION 3.16)\nproject(HyperMaxC LANGUAGES C)\nset(CMAKE_C_STANDARD 11)\nset(CMAKE_C_STANDARD_REQUIRED ON)\nadd_executable(app src/main.c)\ntarget_include_directories(app PRIVATE include)\n"
+      }
+    },
+    "cpp_project": {
+      "name": "cpp Project",
+      "description": "Starter cpp project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
       "languages": [
         "cpp"
       ],
       "directories": [
         "src",
+        "tests",
+        "docs",
+        "build",
         "include",
-        "assets",
-        "tests"
+        "assets"
       ],
       "entry": "src/main.cpp",
       "files": {
-        "src/main.cpp": "#include <iostream>\n\nint main() {\n    std::cout << \"Hello, World!\\n\";\n    return 0;\n}\n",
+        "src/main.cpp": "#include <iostream>\nint main() { std::cout << \"Hello, World!\\n\"; }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
         "include/.gitkeep": "",
         "assets/.gitkeep": "",
-        "tests/.gitkeep": "",
-        "CMakeLists.txt": "cmake_minimum_required(VERSION 3.20)\nproject(HyperMaxEngine LANGUAGES CXX)\n\nset(CMAKE_CXX_STANDARD 17)\nset(CMAKE_CXX_STANDARD_REQUIRED ON)\nset(CMAKE_CXX_EXTENSIONS OFF)\n\nadd_executable(app src/main.cpp)\ntarget_include_directories(app PRIVATE include)\n",
-        "Makefile": "BUILD = build\n\n.PHONY: all configure build run clean\n\nall: build\n\nconfigure:\n\tcmake -S . -B $(BUILD)\n\nbuild: configure\n\tcmake --build $(BUILD)\n\nrun: build\n\t./$(BUILD)/app\n\nclean:\n\trm -rf $(BUILD)\n"
+        "CMakeLists.txt": "cmake_minimum_required(VERSION 3.20)\nproject(HyperMaxCpp LANGUAGES CXX)\nset(CMAKE_CXX_STANDARD 20)\nset(CMAKE_CXX_STANDARD_REQUIRED ON)\nset(CMAKE_CXX_EXTENSIONS OFF)\nadd_executable(app src/main.cpp)\ntarget_include_directories(app PRIVATE include)\n"
       }
     },
-    "python_app": {
-      "name": "Python Application",
-      "description": "Python application with tests and project metadata",
+    "csharp_project": {
+      "name": "csharp Project",
+      "description": "Starter csharp project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "csharp"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Program.cs",
+      "files": {
+        "src/Program.cs": "Console.WriteLine(\"Hello, World!\");\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "src/HyperMax.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup></Project>\n"
+      }
+    },
+    "clojure_project": {
+      "name": "clojure Project",
+      "description": "Starter clojure project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "clojure"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/core.clj",
+      "files": {
+        "src/core.clj": "(ns app.core)\n(defn -main [& _] (println \"Hello, World!\"))\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "cobol_project": {
+      "name": "cobol Project",
+      "description": "Starter cobol project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "cobol"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.cob",
+      "files": {
+        "src/main.cob": "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. MAIN.\n       PROCEDURE DIVISION.\n           DISPLAY 'Hello, World!'.\n           STOP RUN.\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "crystal_project": {
+      "name": "crystal Project",
+      "description": "Starter crystal project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "crystal"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.cr",
+      "files": {
+        "src/main.cr": "puts \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "cuda_project": {
+      "name": "cuda Project",
+      "description": "Starter cuda project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "cuda"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.cu",
+      "files": {
+        "src/main.cu": "#include <cstdio>\n__global__ void hello() { printf(\"Hello, World!\\n\"); }\nint main() { hello<<<1,1>>>(); cudaDeviceSynchronize(); }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "coffeescript_project": {
+      "name": "coffeescript Project",
+      "description": "Starter coffeescript project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "coffeescript"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.coffee",
+      "files": {
+        "src/main.coffee": "console.log 'Hello, World!'\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "commonLisp_project": {
+      "name": "commonLisp Project",
+      "description": "Starter commonLisp project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "commonLisp"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.lisp",
+      "files": {
+        "src/main.lisp": "(format t \"Hello, World!~%\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "d_project": {
+      "name": "d Project",
+      "description": "Starter d project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "d"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/app.d",
+      "files": {
+        "src/app.d": "import std.stdio;\nvoid main() { writeln(\"Hello, World!\"); }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "dart_project": {
+      "name": "dart Project",
+      "description": "Starter dart project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "dart"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.dart",
+      "files": {
+        "src/main.dart": "void main() { print('Hello, World!'); }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "pubspec.yaml": "name: hypermax_dart_project\ndescription: HyperMax Dart starter project.\nversion: 0.1.0\n\nenvironment:\n  sdk: '>=3.0.0 <4.0.0'\n"
+      }
+    },
+    "delphi_project": {
+      "name": "delphi Project",
+      "description": "Starter delphi project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "delphi"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Project.dpr",
+      "files": {
+        "src/Project.dpr": "program Project;\nbegin\n  Writeln('Hello, World!');\nend.\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "dylan_project": {
+      "name": "dylan Project",
+      "description": "Starter dylan project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "dylan"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.dylan",
+      "files": {
+        "src/main.dylan": "Module: app\nFormat- out(\"Hello, World!\\n\");\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "eiffel_project": {
+      "name": "eiffel Project",
+      "description": "Starter eiffel project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "eiffel"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/application.e",
+      "files": {
+        "src/application.e": "class APPLICATION\ncreate make\nfeature\n  make do\n    io.put_string (\"Hello, World!%N\")\n  end\nend\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "elixir_project": {
+      "name": "elixir Project",
+      "description": "Starter elixir project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "elixir"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.ex",
+      "files": {
+        "src/main.ex": "IO.puts(\"Hello, World!\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "mix.exs": "defmodule Hypermax.MixProject do\n  use Mix.Project\n  def project, do: [app: :hypermax, version: \"0.1.0\", elixir: \"~> 1.14\"]\n  def application, do: [extra_applications: [:logger]]\nend\n"
+      }
+    },
+    "elm_project": {
+      "name": "elm Project",
+      "description": "Starter elm project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "elm"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Main.elm",
+      "files": {
+        "src/Main.elm": "module Main exposing (main)\nimport Html exposing (text)\nmain = text \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "erlang_project": {
+      "name": "erlang Project",
+      "description": "Starter erlang project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "erlang"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.erl",
+      "files": {
+        "src/main.erl": "-module(main).\n-export([start/0]).\nstart() -> io:format(\"Hello, World!~n\").\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "erlangHeader_project": {
+      "name": "erlangHeader Project",
+      "description": "Starter erlangHeader project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "erlangHeader"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.hrl",
+      "files": {
+        "src/main.hrl": "-define(APP_NAME, \"HyperMax\").\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "factor_project": {
+      "name": "factor Project",
+      "description": "Starter factor project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "factor"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.factor",
+      "files": {
+        "src/main.factor": "USING: io ;\nIN: main\n: main ( -- ) \"Hello, World!\" print ;\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "fennel_project": {
+      "name": "fennel Project",
+      "description": "Starter fennel project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "fennel"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.fnl",
+      "files": {
+        "src/main.fnl": "(print \"Hello, World!\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "forth_project": {
+      "name": "forth Project",
+      "description": "Starter forth project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "forth"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.fs",
+      "files": {
+        "src/main.fs": ": main . \"Hello, World!\" cr ;\\nmain\\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "fortran_project": {
+      "name": "fortran Project",
+      "description": "Starter fortran project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "fortran"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.f90",
+      "files": {
+        "src/main.f90": "program main\n  print *, \"Hello, World!\"\nend program main\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "fsharp_project": {
+      "name": "fsharp Project",
+      "description": "Starter fsharp project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "fsharp"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Program.fs",
+      "files": {
+        "src/Program.fs": "printfn \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "gleam_project": {
+      "name": "gleam Project",
+      "description": "Starter gleam project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "gleam"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.gleam",
+      "files": {
+        "src/main.gleam": "import gleam/io\npub fn main() { io.println(\"Hello, World!\") }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "glsl_project": {
+      "name": "glsl Project",
+      "description": "Starter glsl project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "glsl"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build",
+        "shaders"
+      ],
+      "entry": "src/main.frag",
+      "files": {
+        "src/main.frag": "#version 450\nlayout(location = 0) out vec4 color;\nvoid main() { color = vec4(1.0); }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "README.md": "# GLSL Shader Project\n\nShaders are compiled to SPIR-V and consumed by a graphics application. This layout provides shader sources, not a standalone executable.\n"
+      }
+    },
+    "go_project": {
+      "name": "go Project",
+      "description": "Starter go project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "go"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.go",
+      "files": {
+        "src/main.go": "package main\nimport \"fmt\"\nfunc main() { fmt.Println(\"Hello, World!\") }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "go.mod": "module example.com/hypermax/project\n\ngo 1.22\n"
+      }
+    },
+    "groovy_project": {
+      "name": "groovy Project",
+      "description": "Starter groovy project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "groovy"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Main.groovy",
+      "files": {
+        "src/Main.groovy": "class Main { static void main(String[] args) { println 'Hello, World!' } }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "gml_project": {
+      "name": "gml Project",
+      "description": "Starter gml project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "gml"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.gml",
+      "files": {
+        "src/main.gml": "show_debug_message(\"Hello, World!\");\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "hack_project": {
+      "name": "hack Project",
+      "description": "Starter hack project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "hack"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.hack",
+      "files": {
+        "src/main.hack": "<?hh\n<<__EntryPoint>>\nfunction main(): void { echo \"Hello, World!\\n\"; }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "haskell_project": {
+      "name": "haskell Project",
+      "description": "Starter haskell project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "haskell"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Main.hs",
+      "files": {
+        "src/Main.hs": "main :: IO ()\nmain = putStrLn \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "hypermax.cabal": "cabal-version: 2.4\nname: hypermax-haskell-project\nversion: 0.1.0.0\nbuild-type: Simple\nexecutable hypermax\n  main-is: Main.hs\n  hs-source-dirs: src\n  build-depends: base >=4.14 && <5\n  default-language: Haskell2010\n"
+      }
+    },
+    "haxe_project": {
+      "name": "haxe Project",
+      "description": "Starter haxe project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "haxe"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Main.hx",
+      "files": {
+        "src/Main.hx": "class Main { static function main() trace(\"Hello, World!\"); }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "hlsl_project": {
+      "name": "hlsl Project",
+      "description": "Starter hlsl project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "hlsl"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build",
+        "shaders"
+      ],
+      "entry": "src/main.hlsl",
+      "files": {
+        "src/main.hlsl": "float4 main() : SV_TARGET { return float4(1, 1, 1, 1); }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "README.md": "# HLSL Shader Project\n\nShaders are compiled to DXIL with DXC and loaded by a Direct3D host application.\n"
+      }
+    },
+    "hy_project": {
+      "name": "hy Project",
+      "description": "Starter hy project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "hy"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.hy",
+      "files": {
+        "src/main.hy": "(print \"Hello, World!\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "icon_project": {
+      "name": "icon Project",
+      "description": "Starter icon project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "icon"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.icn",
+      "files": {
+        "src/main.icn": "procedure main()\n  write(\"Hello, World!\")\nend\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "idris_project": {
+      "name": "idris Project",
+      "description": "Starter idris project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "idris"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Main.idr",
+      "files": {
+        "src/Main.idr": "module Main\nmain : IO ()\nmain = putStrLn \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "inform_project": {
+      "name": "inform Project",
+      "description": "Starter inform project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "inform"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.inf",
+      "files": {
+        "src/main.inf": "[ Main; print \"Hello, World!^\"; ];\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "io_project": {
+      "name": "io Project",
+      "description": "Starter io project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "io"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.io",
+      "files": {
+        "src/main.io": "writeln(\"Hello, World!\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "janet_project": {
+      "name": "janet Project",
+      "description": "Starter janet project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "janet"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.janet",
+      "files": {
+        "src/main.janet": "(print \"Hello, World!\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "java_project": {
+      "name": "java Project",
+      "description": "Starter java project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "java"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build",
+        "lib"
+      ],
+      "entry": "src/Main.java",
+      "files": {
+        "src/Main.java": "public class Main { public static void main(String[] args) { System.out.println(\"Hello, World!\"); } }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "tests/TestMain.java": "public class TestMain { public static void main(String[] args) { if (2 + 2 != 4) throw new AssertionError(); } }\n"
+      }
+    },
+    "javaScript_project": {
+      "name": "javaScript Project",
+      "description": "Starter javaScript project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "javaScript"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.js",
+      "files": {
+        "src/main.js": "function main() { console.log(\"Hello, World!\"); }\nmain();\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "package.json": "{\n  \"name\": \"hypermax-javascript-project\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"commonjs\",\n  \"scripts\": {\n    \"start\": \"node src/main.js\",\n    \"test\": \"node --test\"\n  }\n}\n",
+        "tests/main.test.js": "const test = require('node:test');\nconst assert = require('node:assert/strict');\ntest('basic arithmetic works', () => assert.equal(2 + 2, 4));\n"
+      }
+    },
+    "julia_project": {
+      "name": "julia Project",
+      "description": "Starter julia project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "julia"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.jl",
+      "files": {
+        "src/main.jl": "println(\"Hello, World!\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "j_project": {
+      "name": "j Project",
+      "description": "Starter j project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "j"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.ijs",
+      "files": {
+        "src/main.ijs": "echo 'Hello, World!'\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "k_project": {
+      "name": "k Project",
+      "description": "Starter k project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "k"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.k",
+      "files": {
+        "src/main.k": "/ show Hello, World!\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "kotlin_project": {
+      "name": "kotlin Project",
+      "description": "Starter kotlin project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "kotlin"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Main.kt",
+      "files": {
+        "src/Main.kt": "fun main() { println(\"Hello, World!\") }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "settings.gradle.kts": "rootProject.name = \"hypermax-kotlin-project\"\n",
+        "build.gradle.kts": "plugins { kotlin(\"jvm\") version \"2.0.0\" application }\nrepositories { mavenCentral() }\napplication { mainClass.set(\"MainKt\") }\n"
+      }
+    },
+    "koka_project": {
+      "name": "koka Project",
+      "description": "Starter koka project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "koka"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.kk",
+      "files": {
+        "src/main.kk": "module main\nfun main() : console () { println(\"Hello, World!\") }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "lean_project": {
+      "name": "lean Project",
+      "description": "Starter lean project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "lean"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Main.lean",
+      "files": {
+        "src/Main.lean": "def main : IO Unit := IO.println \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "less_project": {
+      "name": "less Project",
+      "description": "Starter less project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "less"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.less",
+      "files": {
+        "src/main.less": "@color: #333;\nbody { color: @color; }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "lisp_project": {
+      "name": "lisp Project",
+      "description": "Starter lisp project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "lisp"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.lisp",
+      "files": {
+        "src/main.lisp": "(format t \"Hello, World!~%\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "logo_project": {
+      "name": "logo Project",
+      "description": "Starter logo project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "logo"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.logo",
+      "files": {
+        "src/main.logo": "print [Hello, World!]\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "lua_project": {
+      "name": "lua Project",
+      "description": "Starter lua project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "lua"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.lua",
+      "files": {
+        "src/main.lua": "print(\"Hello, World!\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "maple_project": {
+      "name": "maple Project",
+      "description": "Starter maple project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "maple"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.mpl",
+      "files": {
+        "src/main.mpl": "printf(\"Hello, World!\\n\");\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "matlab_project": {
+      "name": "matlab Project",
+      "description": "Starter matlab project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "matlab"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.m",
+      "files": {
+        "src/main.m": "disp('Hello, World!');\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "mercury_project": {
+      "name": "mercury Project",
+      "description": "Starter mercury project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "mercury"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.m",
+      "files": {
+        "src/main.m": ":- module main.\n:- interface.\n:- import_module io.\n:- pred main(io::di, io::uo) is det.\n:- implementation.\nmain(!IO) :- io.write_string(\"Hello, World!\\n\", !IO).\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "mojo_project": {
+      "name": "mojo Project",
+      "description": "Starter mojo project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "mojo"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.mojo",
+      "files": {
+        "src/main.mojo": "fn main() { print(\"Hello, World!\") }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "move_project": {
+      "name": "move Project",
+      "description": "Starter move project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "move"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.move",
+      "files": {
+        "src/main.move": "module example::hello {\n    public fun hello() { std::debug::print(&b\"Hello, World!\"); }\n}\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "neon_project": {
+      "name": "neon Project",
+      "description": "Starter neon project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "neon"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.neon",
+      "files": {
+        "src/main.neon": "parameters:\n    message: Hello, World!\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "nesC_project": {
+      "name": "nesC Project",
+      "description": "Starter nesC project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "nesC"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.nc",
+      "files": {
+        "src/main.nc": "module MainC {\n  uses interface Boot;\n}\nimplementation {\n  event void Boot.booted() { }\n}\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "nim_project": {
+      "name": "nim Project",
+      "description": "Starter nim project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "nim"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.nim",
+      "files": {
+        "src/main.nim": "echo \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "hypermax.nimble": "version = \"0.1.0\"\nauthor = \"Project contributors\"\ndescription = \"HyperMax Nim project\"\nlicense = \"MIT\"\nsrcDir = \"src\"\n"
+      }
+    },
+    "nix_project": {
+      "name": "nix Project",
+      "description": "Starter nix project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "nix"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/default.nix",
+      "files": {
+        "src/default.nix": "{ pkgs ? import <nixpkgs> {} }:\npkgs.writeText \"hello.txt\" \"Hello, World!\\n\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "oberon_project": {
+      "name": "oberon Project",
+      "description": "Starter oberon project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "oberon"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Main.Mod",
+      "files": {
+        "src/Main.Mod": "MODULE Main;\nIMPORT Out;\nBEGIN Out.String(\"Hello, World!\"); Out.Ln\nEND Main.\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "objectiveC_project": {
+      "name": "objectiveC Project",
+      "description": "Starter objectiveC project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "objectiveC"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.m",
+      "files": {
+        "src/main.m": "#import <Foundation/Foundation.h>\nint main(void) { @autoreleasepool { NSLog(@\"Hello, World!\"); } return 0; }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "objectiveCpp_project": {
+      "name": "objectiveCpp Project",
+      "description": "Starter objectiveCpp project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "objectiveCpp"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.mm",
+      "files": {
+        "src/main.mm": "#import <Foundation/Foundation.h>\nint main() { @autoreleasepool { NSLog(@\"Hello, World!\"); } return 0; }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "ocaml_project": {
+      "name": "ocaml Project",
+      "description": "Starter ocaml project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "ocaml"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.ml",
+      "files": {
+        "src/main.ml": "let () = print_endline \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "odin_project": {
+      "name": "odin Project",
+      "description": "Starter odin project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "odin"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.odin",
+      "files": {
+        "src/main.odin": "package main\nimport \"core:fmt\"\nmain :: proc() { fmt.println(\"Hello, World!\") }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "pascal_project": {
+      "name": "pascal Project",
+      "description": "Starter pascal project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "pascal"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.pas",
+      "files": {
+        "src/main.pas": "program Main;\nbegin\n  writeln('Hello, World!');\nend.\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "perl_project": {
+      "name": "perl Project",
+      "description": "Starter perl project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "perl"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.pl",
+      "files": {
+        "src/main.pl": "use strict;\nuse warnings;\nprint \"Hello, World!\\n\";\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "php_project": {
+      "name": "php Project",
+      "description": "Starter php project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "php"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.php",
+      "files": {
+        "src/main.php": "<?php\necho \"Hello, World!\\n\";\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "composer.json": "{\n  \"name\": \"hypermax/project\",\n  \"type\": \"project\",\n  \"require\": {}\n}\n"
+      }
+    },
+    "pony_project": {
+      "name": "pony Project",
+      "description": "Starter pony project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "pony"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.pony",
+      "files": {
+        "src/main.pony": "actor Main\n  new create(env: Env) => env.out.print(\"Hello, World!\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "processing_project": {
+      "name": "processing Project",
+      "description": "Starter processing project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "processing"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.pde",
+      "files": {
+        "src/main.pde": "void setup() { println(\"Hello, World!\"); }\nvoid draw() {}\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "prolog_project": {
+      "name": "prolog Project",
+      "description": "Starter prolog project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "prolog"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.pl",
+      "files": {
+        "src/main.pl": ":- initialization(main, main).\nmain :- writeln('Hello, World!').\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "purescript_project": {
+      "name": "purescript Project",
+      "description": "Starter purescript project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "purescript"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Main.purs",
+      "files": {
+        "src/Main.purs": "module Main where\nimport Prelude\nimport Effect (Effect)\nimport Effect.Console (log)\nmain :: Effect Unit\nmain = log \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "python_project": {
+      "name": "python Project",
+      "description": "Starter python project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
       "languages": [
         "python"
       ],
       "directories": [
         "src",
         "tests",
-        "docs"
+        "docs",
+        "build"
       ],
       "entry": "src/main.py",
       "files": {
-        "src/main.py": "def main():\n    print(\"Hello, World!\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
-        "tests/test_main.py": "import unittest\n\n\nclass TestMain(unittest.TestCase):\n    def test_example(self):\n        self.assertEqual(2 + 2, 4)\n\n\nif __name__ == \"__main__\":\n    unittest.main()\n",
-        "pyproject.toml": "[project]\nname = \"hypermax-python-app\"\nversion = \"0.1.0\"\nrequires-python = \">=3.10\"\ndependencies = []\n",
-        "Makefile": "PYTHON = python3\n\n.PHONY: all build run test clean\n\nall: build\n\nbuild:\n\t$(PYTHON) -m compileall -q src\n\nrun:\n\t$(PYTHON) src/main.py\n\ntest:\n\t$(PYTHON) -m unittest discover -s tests\n\nclean:\n\trm -rf build dist __pycache__ src/__pycache__ tests/__pycache__\n"
+        "src/main.py": "def main():\n    print(\"Hello, World!\")\n\nif __name__ == \"__main__\":\n    main()\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "pyproject.toml": "[build-system]\nrequires = [\"setuptools>=68\"]\nbuild-backend = \"setuptools.build_meta\"\n\n[project]\nname = \"hypermax-python-project\"\nversion = \"0.1.0\"\nrequires-python = \">=3.10\"\ndependencies = []\n",
+        "tests/test_main.py": "import unittest\n\nclass TestMain(unittest.TestCase):\n    def test_example(self):\n        self.assertEqual(2 + 2, 4)\n\nif __name__ == '__main__':\n    unittest.main()\n"
       }
     },
-    "c_application": {
-      "name": "C Application",
-      "description": "C application using Make and CMake",
+    "qsharp_project": {
+      "name": "qsharp Project",
+      "description": "Starter qsharp project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
       "languages": [
-        "c"
+        "qsharp"
       ],
       "directories": [
         "src",
-        "include",
-        "tests"
+        "tests",
+        "docs",
+        "build"
       ],
-      "entry": "src/main.c",
+      "entry": "src/Main.qs",
       "files": {
-        "src/main.c": "#include <stdio.h>\n\nint main(void) {\n    puts(\"Hello, World!\");\n    return 0;\n}\n",
-        "include/.gitkeep": "",
-        "tests/.gitkeep": "",
-        "CMakeLists.txt": "cmake_minimum_required(VERSION 3.16)\nproject(HyperMaxApp LANGUAGES C)\n\nset(CMAKE_C_STANDARD 11)\nset(CMAKE_C_STANDARD_REQUIRED ON)\n\nadd_executable(app src/main.c)\ntarget_include_directories(app PRIVATE include)\n",
-        "Makefile": "CC = cc\nCFLAGS = -std=c11 -Wall -Wextra -Wpedantic -Iinclude\nBUILD = build\nTARGET = $(BUILD)/app\n\n.PHONY: all build run test clean\n\nall: build\n\nbuild:\n\tmkdir -p $(BUILD)\n\t$(CC) $(CFLAGS) src/main.c -o $(TARGET)\n\nrun: build\n\t./$(TARGET)\n\ntest:\n\t$(CC) $(CFLAGS) -fsyntax-only src/main.c\n\nclean:\n\trm -rf $(BUILD)\n"
+        "src/Main.qs": "namespace HyperMax {\n    open Microsoft.Quantum.Diagnostics;\n    @EntryPoint()\n    operation Main() : Unit { Message(\"Hello, World!\"); }\n}\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
       }
     },
-    "javascript_app": {
-      "name": "JavaScript Application",
-      "description": "Node.js application with built-in test support",
+    "qml_project": {
+      "name": "qml Project",
+      "description": "Starter qml project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
       "languages": [
-        "javaScript"
+        "qml"
       ],
       "directories": [
         "src",
-        "tests"
+        "tests",
+        "docs",
+        "build"
       ],
-      "entry": "src/main.js",
+      "entry": "src/Main.qml",
       "files": {
-        "src/main.js": "function main() {\n    console.log(\"Hello, World!\");\n}\n\nmain();\n",
-        "tests/main.test.js": "const test = require('node:test');\nconst assert = require('node:assert/strict');\n\ntest('basic arithmetic works', () => {\n    assert.equal(2 + 2, 4);\n});\n",
-        "package.json": "{\n  \"name\": \"hypermax-javascript-app\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"scripts\": {\n    \"start\": \"node src/main.js\",\n    \"test\": \"node --test\"\n  }\n",
-        "Makefile": "NODE = node\n\n.PHONY: all build run test clean\n\nall: build\n\nbuild:\n\t$(NODE) --check src/main.js\n\nrun:\n\t$(NODE) src/main.js\n\ntest:\n\t$(NODE) --test\n\nclean:\n\trm -rf build dist coverage\n"
+        "src/Main.qml": "import QtQuick\nRectangle { width: 320; height: 200; Text { anchors.centerIn: parent; text: \"Hello, World!\" } }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
       }
     },
-    "rust_app": {
-      "name": "Rust Application",
-      "description": "Rust application managed by Cargo",
+    "quakeC_project": {
+      "name": "quakeC Project",
+      "description": "Starter quakeC project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "quakeC"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.qc",
+      "files": {
+        "src/main.qc": "void() main = { dprint(\"Hello, World!\\n\"); };\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "r_project": {
+      "name": "r Project",
+      "description": "Starter r project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "r"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.R",
+      "files": {
+        "src/main.R": "cat(\"Hello, World!\\n\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "DESCRIPTION": "Package: hypermaxproject\nTitle: HyperMax R Project\nVersion: 0.1.0\nDescription: Starter R project.\nLicense: MIT\n",
+        "tests/testthat.R": "library(testthat)\ntest_dir('tests/testthat')\n"
+      }
+    },
+    "racket_project": {
+      "name": "racket Project",
+      "description": "Starter racket project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "racket"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.rkt",
+      "files": {
+        "src/main.rkt": "#lang racket\n(displayln \"Hello, World!\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "rexx_project": {
+      "name": "rexx Project",
+      "description": "Starter rexx project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "rexx"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.rexx",
+      "files": {
+        "src/main.rexx": "say 'Hello, World!'\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "roc_project": {
+      "name": "roc Project",
+      "description": "Starter roc project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "roc"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.roc",
+      "files": {
+        "src/main.roc": "app \"Hello, World!\" { pf: Stdout.line }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "ruby_project": {
+      "name": "ruby Project",
+      "description": "Starter ruby project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "ruby"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.rb",
+      "files": {
+        "src/main.rb": "puts \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "Gemfile": "source 'https://rubygems.org'\n"
+      }
+    },
+    "rust_project": {
+      "name": "rust Project",
+      "description": "Starter rust project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
       "languages": [
         "rust"
       ],
       "directories": [
         "src",
-        "tests"
+        "tests",
+        "docs",
+        "build"
       ],
       "entry": "src/main.rs",
       "files": {
-        "src/main.rs": "fn main() {\n    println!(\"Hello, World!\");\n}\n",
-        "Cargo.toml": "[package]\nname = \"hypermax-rust-app\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n",
-        "Makefile": "CARGO = cargo\n\n.PHONY: all build run test clean\n\nall: build\n\nbuild:\n\t$(CARGO) build\n\nrun:\n\t$(CARGO) run\n\ntest:\n\t$(CARGO) test\n\nclean:\n\t$(CARGO) clean\n"
+        "src/main.rs": "fn main() { println!(\"Hello, World!\"); }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "Cargo.toml": "[package]\nname = \"hypermax-rust-project\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[dependencies]\n",
+        "tests/integration_test.rs": "#[test]\nfn example() { assert_eq!(2 + 2, 4); }\n"
+      }
+    },
+    "scala_project": {
+      "name": "scala Project",
+      "description": "Starter scala project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "scala"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Main.scala",
+      "files": {
+        "src/Main.scala": "object Main { def main(args: Array[String]): Unit = println(\"Hello, World!\") }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "build.sbt": "ThisBuild / scalaVersion := \"3.3.3\"\nlazy val root = (project in file(\".\")).settings(name := \"hypermax-scala-project\")\n"
+      }
+    },
+    "scheme_project": {
+      "name": "scheme Project",
+      "description": "Starter scheme project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "scheme"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.scm",
+      "files": {
+        "src/main.scm": "(display \"Hello, World!\") (newline)\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "smalltalk_project": {
+      "name": "smalltalk Project",
+      "description": "Starter smalltalk project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "smalltalk"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.st",
+      "files": {
+        "src/main.st": "'Hello, World!' displayNl.\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "solidity_project": {
+      "name": "solidity Project",
+      "description": "Starter solidity project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "solidity"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Hello.sol",
+      "files": {
+        "src/Hello.sol": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\ncontract Hello { function message() external pure returns (string memory) { return \"Hello, World!\"; } }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "foundry.toml": "[profile.default]\nsrc = \"src\"\ntest = \"tests\"\nout = \"out\"\nsolc_version = \"0.8.20\"\n"
+      }
+    },
+    "sql_project": {
+      "name": "sql Project",
+      "description": "Starter sql project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "sql"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.sql",
+      "files": {
+        "src/main.sql": "CREATE TABLE example (id INTEGER PRIMARY KEY, message TEXT NOT NULL);\nINSERT INTO example (message) VALUES ('Hello, World!');\nSELECT * FROM example;\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "tests/test_main.sql": "CREATE TABLE example (id INTEGER PRIMARY KEY, message TEXT NOT NULL);\nINSERT INTO example VALUES (1, 'test');\nSELECT CASE WHEN COUNT(*) = 1 THEN 'PASS' ELSE 'FAIL' END FROM example;\n",
+        "README.md": "# SQL Database Project\n\nUses SQLite for the starter schema and test scripts. Change the database adapter and SQL dialect if targeting another database engine.\n"
+      }
+    },
+    "squirrel_project": {
+      "name": "squirrel Project",
+      "description": "Starter squirrel project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "squirrel"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.nut",
+      "files": {
+        "src/main.nut": "print(\"Hello, World!\\n\");\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "swift_project": {
+      "name": "swift Project",
+      "description": "Starter swift project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "swift"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.swift",
+      "files": {
+        "src/main.swift": "print(\"Hello, World!\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "Package.swift": "// swift-tools-version: 5.9\nimport PackageDescription\nlet package = Package(name: \"HyperMaxSwift\", targets: [.executableTarget(name: \"HyperMaxSwift\", path: \"src\"), .testTarget(name: \"HyperMaxSwiftTests\", dependencies: [\"HyperMaxSwift\"], path: \"tests\")])\n"
+      }
+    },
+    "tcl_project": {
+      "name": "tcl Project",
+      "description": "Starter tcl project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "tcl"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.tcl",
+      "files": {
+        "src/main.tcl": "puts \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "terra_project": {
+      "name": "terra Project",
+      "description": "Starter terra project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "terra"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.t",
+      "files": {
+        "src/main.t": "print(\"Hello, World!\\n\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "typescript_project": {
+      "name": "typescript Project",
+      "description": "Starter typescript project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "typescript"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.ts",
+      "files": {
+        "src/main.ts": "function main(): void { console.log(\"Hello, World!\"); }\nmain();\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "package.json": "{\n  \"name\": \"hypermax-typescript-project\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"scripts\": {\n    \"build\": \"tsc -p tsconfig.json\",\n    \"start\": \"node build/main.js\",\n    \"test\": \"node --test build/tests\"\n  },\n  \"devDependencies\": {\n    \"typescript\": \"^5.0.0\"\n  }\n}\n",
+        "tsconfig.json": "{\n  \"compilerOptions\": {\n    \"target\": \"ES2022\",\n    \"module\": \"CommonJS\",\n    \"rootDir\": \".\",\n    \"outDir\": \"build\",\n    \"strict\": true,\n    \"esModuleInterop\": true\n  },\n  \"include\": [\n    \"src/**/*.ts\",\n    \"tests/**/*.ts\"\n  ]\n}\n",
+        "tests/test_main.ts": "import { strict as assert } from 'node:assert';\nassert.equal(2 + 2, 4);\n"
+      }
+    },
+    "typst_project": {
+      "name": "typst Project",
+      "description": "Starter typst project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "typst"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.typ",
+      "files": {
+        "src/main.typ": "= Hello, World!\n\nThis is a Typst document.\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "unison_project": {
+      "name": "unison Project",
+      "description": "Starter unison project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "unison"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.u",
+      "files": {
+        "src/main.u": "main : '{IO} ()\nmain = printLine \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "ur_project": {
+      "name": "ur Project",
+      "description": "Starter ur project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "ur"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.ur",
+      "files": {
+        "src/main.ur": "val main = return <xml>Hello, World!</xml>\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "vala_project": {
+      "name": "vala Project",
+      "description": "Starter vala project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "vala"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.vala",
+      "files": {
+        "src/main.vala": "void main() { print(\"Hello, World!\\n\"); }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "v_project": {
+      "name": "v Project",
+      "description": "Starter v project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "v"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.v",
+      "files": {
+        "src/main.v": "fn main() { println('Hello, World!') }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "verilog_project": {
+      "name": "verilog Project",
+      "description": "Starter verilog project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "verilog"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.v",
+      "files": {
+        "src/main.v": "module main;\n initial begin $display(\"Hello, World!\"); $finish; end\nendmodule\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "README.md": "# Verilog Hardware Project\n\nSimulate with Icarus Verilog. For FPGA synthesis, add the target vendor's constraints and synthesis flow.\n"
+      }
+    },
+    "vhdl_project": {
+      "name": "vhdl Project",
+      "description": "Starter vhdl project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "vhdl"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.vhd",
+      "files": {
+        "src/main.vhd": "entity main is end entity;\narchitecture rtl of main is begin\n  process begin report \"Hello, World!\"; wait; end process;\nend architecture;\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "README.md": "# VHDL Hardware Project\n\nAnalyze and simulate with GHDL. For FPGA synthesis, add target-specific constraints and synthesis tooling.\n"
+      }
+    },
+    "vimScript_project": {
+      "name": "vimScript Project",
+      "description": "Starter vimScript project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "vimScript"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.vim",
+      "files": {
+        "src/main.vim": "echo \"Hello, World!\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "visualBasic_project": {
+      "name": "visualBasic Project",
+      "description": "Starter visualBasic project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "visualBasic"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Program.vb",
+      "files": {
+        "src/Program.vb": "Module Program\n    Sub Main()\n        Console.WriteLine(\"Hello, World!\")\n    End Sub\nEnd Module\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "wren_project": {
+      "name": "wren Project",
+      "description": "Starter wren project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "wren"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.wren",
+      "files": {
+        "src/main.wren": "System.print(\"Hello, World!\")\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "wolfram_project": {
+      "name": "wolfram Project",
+      "description": "Starter wolfram project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "wolfram"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.wls",
+      "files": {
+        "src/main.wls": "Print[\"Hello, World!\"]\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "x10_project": {
+      "name": "x10 Project",
+      "description": "Starter x10 project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "x10"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/Main.x10",
+      "files": {
+        "src/Main.x10": "public class Main { public static def main(args: Rail[String]) { Console.OUT.println(\"Hello, World!\"); } }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "yorick_project": {
+      "name": "yorick Project",
+      "description": "Starter yorick project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "yorick"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.i",
+      "files": {
+        "src/main.i": "write, \"Hello, World!\", format=\"(a/)\"\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
+      }
+    },
+    "zig_project": {
+      "name": "zig Project",
+      "description": "Starter zig project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "zig"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.zig",
+      "files": {
+        "src/main.zig": "const std = @import(\"std\");\npub fn main() void { std.debug.print(\"Hello, World!\\n\", .{}); }\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n",
+        "build.zig": "const std = @import(\"std\");\npub fn build(b: *std.Build) void {\n    const target = b.standardTargetOptions(.{});\n    const optimize = b.standardOptimizeOption(.{});\n    const exe = b.addExecutable(.{ .name = \"app\", .root_source_file = b.path(\"src/main.zig\"), .target = target, .optimize = optimize });\n    b.installArtifact(exe);\n    const run_cmd = b.addRunArtifact(exe);\n    const run_step = b.step(\"run\", \"Run the application\"); run_step.dependOn(&run_cmd.step);\n}\n"
+      }
+    },
+    "zsh_project": {
+      "name": "zsh Project",
+      "description": "Starter zsh project with a language-appropriate entry point, tests, documentation, and toolchain configuration.",
+      "languages": [
+        "zsh"
+      ],
+      "directories": [
+        "src",
+        "tests",
+        "docs",
+        "build"
+      ],
+      "entry": "src/main.zsh",
+      "files": {
+        "src/main.zsh": "#!/usr/bin/env zsh\nprint -r -- 'Hello, World!'\n",
+        "tests/README.md": "# Tests\n\nAdd automated tests for this project. Run them with the configured test command.\n",
+        "docs/DESIGN.md": "# Design\n\nDocument architecture, module boundaries, and important decisions here.\n",
+        ".gitignore": "build/\ndist/\nout/\n*.o\n*.obj\n*.exe\n*.class\n*.jar\n*.swf\n*.spv\n*.dxil\n*.db\n__pycache__/\n.venv/\nvenv/\nnode_modules/\ntarget/\n"
       }
     }
   }

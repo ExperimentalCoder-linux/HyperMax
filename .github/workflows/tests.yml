@@ -1,0 +1,33 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Neovim tests (stable)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Neovim and Lua tooling
+        uses: rhysd/action-setup-vim@v1
+        with:
+          version: v0.10.4
+          neovim: true
+
+      - name: Check Lua syntax
+        shell: bash
+        run: |
+          find lua plugin tests -type f -name '*.lua' -print0 | while IFS= read -r -d '' file; do
+            CHECK_FILE="$file" nvim --headless -u NONE -c 'lua assert(loadfile(vim.env.CHECK_FILE))' -c 'qa!'
+          done
+
+      - name: Run test suite
+        run: nvim --headless -u NONE -c "set rtp+=." -c "luafile tests/run.lua"

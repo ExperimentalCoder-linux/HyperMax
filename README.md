@@ -163,7 +163,7 @@ hypermax.nvim/
 │   ├── config.lua              # Defaults and persisted configuration
 │   ├── keymaps.lua             # Default keymaps
 │   └── progress.lua            # Generation progress UI
-└── doc/FULL_DOCUMENTATION.md  # Full user and developer guide
+└── doc/README.md             # Full user and developer guide
 ```
 
 ### Project metadata and entry point
