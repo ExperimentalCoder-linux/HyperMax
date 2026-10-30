@@ -1,4 +1,5 @@
 local Progress = {}
+local Window = require("hypermax.window")
 
 local State = {
 	buffer = nil,
@@ -9,6 +10,8 @@ local State = {
 	message = "Preparing...",
 	output = {},
 	output_limit = 8,
+	root = nil,
+	finished = false,
 }
 
 local function Is_Valid_Window()
@@ -38,6 +41,8 @@ local function Render()
 		State.message,
 		"",
 		"Output:",
+		"",
+		"q / Esc: close this window",
 	}
 
 	local start = math.max(1, #State.output - State.output_limit + 1)
@@ -55,7 +60,7 @@ local function Render()
 	end
 end
 
-function Progress.Start(title, total)
+function Progress.Start(title, total, root)
 	Progress.Close()
 
 	State.title = title or "HyperMax"
@@ -63,6 +68,8 @@ function Progress.Start(title, total)
 	State.completed = 0
 	State.message = "Preparing..."
 	State.output = {}
+	State.root = root
+	State.finished = false
 
 	State.buffer = vim.api.nvim_create_buf(false, true)
 
@@ -75,19 +82,14 @@ function Progress.Start(title, total)
 	local width = math.min(68, vim.o.columns - 4)
 	local height = math.min(18, vim.o.lines - 4)
 
-	State.window = vim.api.nvim_open_win(State.buffer, true, {
-		relative = "editor",
-		width = width,
-		height = height,
-		row = math.max(0, math.floor((vim.o.lines - height) / 2) - 1),
-		col = math.max(0, math.floor((vim.o.columns - width) / 2)),
-		style = "minimal",
-		border = "rounded",
-		title = " HyperMax Progress ",
-		title_pos = "center",
-	})
+	State.window = Window.Open_Float(State.buffer, "HyperMax Progress", width, height, root)
 
 	vim.wo[State.window].wrap = true
+	vim.wo[State.window].number = false
+	vim.wo[State.window].relativenumber = false
+	vim.wo[State.window].cursorline = true
+	vim.keymap.set("n", "q", Progress.Close, { buffer = State.buffer, silent = true, nowait = true, desc = "Close progress window" })
+	vim.keymap.set("n", "<Esc>", Progress.Close, { buffer = State.buffer, silent = true, nowait = true, desc = "Close progress window" })
 	Render()
 end
 
@@ -114,6 +116,7 @@ function Progress.Increment(message)
 end
 
 function Progress.Finish(success, message)
+	State.finished = true
 	State.message = message or (success and "Completed." or "Failed.")
 	State.completed = success and State.total or State.completed
 
@@ -132,6 +135,10 @@ function Progress.Close()
 
 	State.window = nil
 	State.buffer = nil
+end
+
+function Progress.Get_State()
+	return State
 end
 
 return Progress

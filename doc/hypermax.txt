@@ -133,6 +133,10 @@ WORKSPACE AND FLOW
 
     <Leader>+x             Open diagnostics scoped to the current project.
 
+    <Leader>+H             Browse save points and roll back a project.
+
+    <Leader>+S             Create a manual hard save point.
+
 LAYOUTS
 
     <Leader>+l             Load a project layout.
@@ -144,6 +148,9 @@ LAYOUTS
 SETTINGS
 
     <Leader>+s             Open HyperMax settings.
+
+    The settings UI is nested by feature category. Each nested menu provides
+    a Back option. Workspace settings are project-local in .hmc/config.json.
 
 OTHER
 
@@ -211,6 +218,15 @@ HyperMax provides the following user commands.
 :HyperMaxDiagnostics
     Collect current Neovim diagnostics from the current project into quickfix.
 
+                                                    *:HyperMaxHistory*
+:HyperMaxHistory
+    Open the project's save-point history. Select an item and press Enter to
+    restore it after confirmation. HyperMax creates a safety save first.
+
+                                                    *:HyperMaxSavePoint*
+:HyperMaxSavePoint
+    Create a manual hard save point for the current HyperMax project.
+
 ==============================================================================
 6. WORKSPACE AND FLOW                                          *hypermax-workspace*
 ==============================================================================
@@ -236,9 +252,13 @@ TASK BOARD
     e       Edit the selected task.
     s       Move the task to the next status.
     p       Cycle priority.
+    P       Pin or unpin the selected task in the persistent pinned section.
     d       Mark done or return to todo.
     x       Delete after confirmation.
     Enter   Display task details.
+
+    The pinned section is positioned at the top or bottom of the board using
+    the project's pinned_tasks_position setting in .hmc/config.json.
 
 RUN CONFIGURATIONS
 
@@ -253,6 +273,46 @@ RUN CONFIGURATIONS
 
 Both tasks and run configurations are saved in .hmc/workspace.json. This is
 project-specific state and is deliberately excluded from reusable layouts.
+After a runner exits with code zero, HyperMax creates a soft save point unless
+auto_save_after_success is disabled in the project settings.
+
+SAVE HISTORY AND ROLLBACK
+
+    Use <Leader>+S or :HyperMaxSavePoint to create a hard save. Use <Leader>+H
+    or :HyperMaxHistory to open the save-history context window. Press s to
+    create a hard save, Enter to restore the selected point, d to delete it,
+    r to refresh, and q or Escape to close the window. Restore operations are
+    confirmed and create a safety save before changing files. Rollback is
+    refused if the target or current workspace cannot be captured completely.
+
+    Snapshots include normal project files and .hmc project configuration, but
+    exclude .git and .hmc/history. File/directory permissions and symbolic
+    links are preserved. Brotli is used when the brotli executable is present;
+    without it, save points use uncompressed files.
+
+PROJECT WORKSPACE SETTINGS
+
+    Project-specific settings are stored in .hmc/config.json, separately from
+    global project-generation preferences. They include a custom entry-point
+    file/function, hidden-file visibility, relative file/folder exclusions,
+    tabline visibility, context-window placement, pinned-task placement and
+    automatic soft saves after successful runs. The dashboard h key toggles
+    hidden files and saves the setting for that project. The .git and .hmc
+    metadata directories remain protected from the explorer; other hidden
+    folders such as .venv are revealed when hidden items are enabled.
+
+    Settings are grouped into nested Project creation, Saving and history,
+    Layouts, Interface, Utilities, Global settings and Workspace menus. Nested
+    menus provide a Back entry. Workspace-only settings are shown only when a
+    HyperMax project is available.
+
+CONTEXT WINDOW PLACEMENT
+
+    HyperMax context windows share one placement helper. The context_position
+    setting accepts N, E, S, W, NE, NW, SE, SW, NS, EW and center. Cardinal
+    values anchor a window to an editor edge, corner values anchor it to a
+    corner, and NS/EW/center place it in the middle. Window dimensions are
+    clamped to the editor size.
 
 SEARCH AND NAVIGATION
 

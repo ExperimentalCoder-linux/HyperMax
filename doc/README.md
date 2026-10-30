@@ -167,6 +167,10 @@ The current settings menu exposes these options:
 
 The settings menu also has **Reset all settings to defaults**. Settings are stored as JSON; if the file is invalid, HyperMax warns and falls back to defaults and valid overrides.
 
+### Project workspace settings
+
+Workspace preferences are separate from global project-generation defaults and are stored in each project's `.hmc/config.json`. The nested Settings menu shows the **Workspace** category only when a HyperMax project is available. It contains the custom entry-point file/function, hidden-file visibility, relative exclude patterns, tabline visibility, context-window location, pinned-task placement, and automatic saves after successful runs. The dashboard `h` key toggles hidden items and persists the value for that project. `.git` and `.hmc` remain protected from the project tree; other hidden folders such as `.venv` can be displayed when hidden items are enabled.
+
 ## Generated files and safety
 
 Depending on the language, manager, and layout, a new project may contain:
@@ -242,6 +246,9 @@ hypermax.nvim/
 │   ├── config.lua
 │   ├── settings.lua
 │   ├── workspace.lua
+│   ├── diagnostics.lua
+│   ├── history.lua
+│   ├── window.lua
 │   ├── flow.lua
 │   ├── keymaps.lua
 │   └── progress.lua
@@ -256,9 +263,12 @@ hypermax.nvim/
 | `plugin/hypermax.lua` | Neovim runtime loader; guards against duplicate loading and calls setup. | Runtime plugin scripts are discovered by Neovim; this file should be small and side-effect-limited. |
 | `lua/hypermax/init.lua` | Public module, version, setup, user-command registration, and public convenience functions. | Gives users and plugin managers one stable entry point. |
 | `project.lua` | Interactive creation flow, layout draft editor, project listing/opening, manifest generation, and safe file/directory creation. | Project workflows coordinate the other modules while keeping UI state together. |
-| `project_config.lua` | Per-project `.hmc` metadata, project snapshots, global project registry, and folder conversion. | Separates project identity from reusable layouts and global preferences. |
+| `project_config.lua` | Per-project `.hmc` metadata and workspace settings, global project registry, and folder conversion. | Separates project identity from reusable layouts and global preferences. |
 | `dashboard.lua` | Project sidebar, file operations, and interactive Git actions. | Keeps the project tree and its editor interaction in one module. |
-| `workspace.lua` | Workspace home, action palette, file/text search, TODO scan, project diagnostics and quick navigation. | Provides one discoverable home for the developer workflow. |
+| `workspace.lua` | Workspace home, action palette, file/text search, TODO scan and quick navigation. | Provides one discoverable home for the developer workflow. |
+| `diagnostics.lua` | Collects diagnostics from named buffers under the selected project root and opens them in quickfix. | Keeps project boundaries and quickfix coordinate conversion consistent. |
+| `history.lua` | Captures hard/soft save points, optional Brotli compression, and guarded rollback with a pre-restore safety save. | Isolates destructive snapshot operations and their validation from the UI. |
+| `window.lua` | Computes shared floating-window geometry from project-local placement settings. | Keeps context windows consistent and bounded to the editor area. |
 | `flow.lua` | Project-local task board, run configurations, validation and persistence. | Separates workflow data from its UI and keeps it scoped to the project. |
 | `git.lua` | Git command execution, status parsing, branch/remote/tag/stash/history operations. | Makes Git operations testable and keeps shell/argument handling out of the UI. |
 | `languages.lua` | Language metadata and language-related queries, including default entry filenames and executable checks. | Keeps language-specific identity separate from project-generation mechanics. |
@@ -314,9 +324,23 @@ The day-to-day workspace is split into three cooperating modules:
 - `flow.lua` owns project-local tasks and named run configurations. The persistence and validation API is intentionally available independently from its UI.
 - `dashboard.lua` remains the project file explorer and Git action surface. It exposes shortcuts to the workspace, task board, run configurations and project search.
 
-Project-specific flow data is stored in `.hmc/workspace.json`, separate from the reusable project layout snapshot. The document has a versioned top-level object with `tasks` and `runners` arrays. Task states are `todo`, `doing` and `done`; priorities are `low`, `normal` and `high`. Run configurations contain a stable ID, display name, shell command, project-relative working directory, description and last-run result metadata.
+Project-specific flow data is stored in `.hmc/workspace.json`, separate from the reusable project layout snapshot. The document has a versioned top-level object with `tasks` and `runners` arrays. Task states are `todo`, `doing` and `done`; priorities are `low`, `normal` and `high`. Tasks can be pinned with `P`; their pinned state persists, and `.hmc/config.json` controls whether the pinned section appears above or below the status groups. Run configurations contain a stable ID, display name, shell command, project-relative working directory, description and last-run result metadata.
 
-The runner UI only launches a command after an explicit Run action. The command is treated as user-authored project content; commands should be reviewed when projects are cloned or otherwise untrusted. Working directories reject absolute paths and parent traversal, and real-path containment checks prevent a symlink from redirecting a runner outside the project root.
+Project-specific interface preferences live in `.hmc/config.json`. They include a custom entry-point file/function, hidden-file visibility, relative file/folder exclusion patterns, tabline visibility, context-window placement, pinned-task placement, and automatic soft saves after successful runs. Global creation defaults remain in the user's Neovim data directory. The Settings UI is grouped into nested categories and each submenu has a Back entry.
+
+The runner UI only launches a command after an explicit Run action. The command is treated as user-authored project content; commands should be reviewed when projects are cloned or otherwise untrusted. Working directories reject absolute paths and parent traversal, and real-path containment checks prevent a symlink from redirecting a runner outside the project root. After an exit code of zero, a soft save point is created unless `auto_save_after_success` is false.
+
+### Save history and rollback
+
+Use `<leader>+S` or `:HyperMaxSavePoint` to create a hard save point. Use `<leader>+H` or `:HyperMaxHistory` to open the save-history window, where `s` creates a hard save, `Enter` restores the selected save point after confirmation, `d` deletes it after confirmation, and `r` refreshes the list. A pre-rollback safety save is created before files are changed. Rollback is cancelled when the requested save point is incomplete, or when the current workspace cannot be captured completely for the safety save. Snapshots include `.hmc` project settings and workspace data, exclude `.git` and `.hmc/history`, and preserve file/directory modes and symbolic links. Brotli compression is optional and is used only when the `brotli` executable is available; otherwise the snapshot remains uncompressed. The history index retains up to 500 save points.
+
+### Shared context windows
+
+`window.lua` calculates the placement and bounds of HyperMax floating context windows. The `.hmc/config.json` setting `context_position` accepts `N`, `E`, `S`, `W`, `NE`, `NW`, `SE`, `SW`, `NS`, `EW`, or `center`. The values anchor a window to an edge/corner or place it at the center. Width and height are clamped to the available editor area.
+
+### Diagnostics
+
+`diagnostics.lua` gathers current diagnostics only from named buffers whose paths are inside the selected project root. It converts Neovim's zero-based positions to quickfix's one-based positions, sorts the entries and opens the project-scoped list. It does not attempt to run compilers or language servers; diagnostics must already have been published by Neovim clients.
 
 The project index keeps `last_opened` metadata so project selection is recency-first. Opening the project dashboard refreshes this timestamp, which means projects opened through the startup path are included in recent-project ordering too.
 

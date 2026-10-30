@@ -4,6 +4,8 @@ local Workspace = {}
 local Flow = require("hypermax.flow")
 local Git = require("hypermax.git")
 local Project_Config = require("hypermax.project_config")
+local Diagnostics = require("hypermax.diagnostics")
+local Window = require("hypermax.window")
 
 local State = { buffer = nil, window = nil, root = nil, recent_projects = {}, recent_project_lines = {} }
 
@@ -54,13 +56,7 @@ local function Open_Window()
 	vim.bo[buf].bufhidden = "wipe"
 	vim.bo[buf].swapfile = false
 	vim.bo[buf].filetype = "hypermaxworkspace"
-	local win = vim.api.nvim_open_win(buf, true, {
-		relative = "editor", style = "minimal", border = "rounded",
-		width = width, height = height,
-		row = math.max(1, math.floor((vim.o.lines - height) / 2) - 1),
-		col = math.max(1, math.floor((vim.o.columns - width) / 2)),
-		title = "  HYPERMAX  /  WORKSPACE  ", title_pos = "center",
-	})
+	local win = Window.Open_Float(buf, "HYPERMAX  /  WORKSPACE", width, height, State.root)
 	vim.wo[win].number = false
 	vim.wo[win].relativenumber = false
 	vim.wo[win].signcolumn = "no"
@@ -249,58 +245,20 @@ local function Open_Buffers()
 end
 
 local function Project_Diagnostics(root)
-	local result = { items = {}, errors = 0, warnings = 0, info = 0, hints = 0 }
-	if not root or type(vim.diagnostic.get) ~= "function" then return result end
-	local severity = vim.diagnostic.severity or {}
-	for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-		if vim.api.nvim_buf_is_valid(bufnr) then
-			local filename = vim.api.nvim_buf_get_name(bufnr)
-			if filename ~= "" then
-				filename = Normalize(filename)
-				if filename == root or filename:sub(1, #root + 1) == root .. "/" then
-					for _, diagnostic in ipairs(vim.diagnostic.get(bufnr)) do
-						local level = diagnostic.severity or severity.INFO
-						local kind = level == severity.ERROR and "E"
-							or (level == severity.WARN and "W")
-							or (level == severity.HINT and "H") or "I"
-						if kind == "E" then result.errors = result.errors + 1
-						elseif kind == "W" then result.warnings = result.warnings + 1
-						elseif kind == "H" then result.hints = result.hints + 1
-						else result.info = result.info + 1 end
-						result.items[#result.items + 1] = {
-							filename = filename,
-							lnum = (diagnostic.lnum or 0) + 1,
-							col = (diagnostic.col or 0) + 1,
-							text = diagnostic.message or "Diagnostic",
-							type = kind == "H" and "I" or kind,
-						}
-					end
-				end
-			end
-		end
-	end
-	table.sort(result.items, function(a, b)
-		if a.filename ~= b.filename then return a.filename < b.filename end
-		if a.lnum ~= b.lnum then return a.lnum < b.lnum end
-		return a.col < b.col
-	end)
-	return result
+	return Diagnostics.Collect(root)
 end
 
 function Workspace.Diagnostics(root)
 	root = Find_Project_Root(root) or Normalize(root)
 	local diagnostics = Project_Diagnostics(root)
 	if #diagnostics.items == 0 then
-		Notify("No diagnostics are currently reported for this project", vim.log.levels.INFO)
-		return true
+		return Diagnostics.Open(root)
 	end
-	vim.fn.setqflist({}, " ", { title = "HyperMax project diagnostics", items = diagnostics.items })
 	if not Ensure_Editor_Window() then
 		Notify("Could not open the diagnostics list", vim.log.levels.ERROR)
 		return false
 	end
-	vim.cmd("copen")
-	return true
+	return Diagnostics.Open(root)
 end
 
 local function Open_Recent_Project(index)
@@ -342,6 +300,8 @@ local function Actions(root)
 		{ label = "Search in project", detail = "Search source text with ripgrep", action = function() Workspace.Search_Text(root) end },
 		{ label = "Find TODO / FIXME markers", detail = "Collect project markers into the quickfix list", action = function() Workspace.Scan_Todos(root) end },
 		{ label = "Project diagnostics", detail = "Review compiler and language-server diagnostics", action = function() Workspace.Diagnostics(root) end },
+		{ label = "Save history / rollback", detail = "Browse hard and automatic save points", action = function() require("hypermax.history").Open(root) end },
+		{ label = "Create hard save point", detail = "Save the current project workspace", action = function() local ok, result = require("hypermax.history").Save(root, "hard"); Notify(ok and ("Hard save created: " .. result.id) or tostring(result), ok and vim.log.levels.INFO or vim.log.levels.ERROR) end },
 		{ label = "Git status", detail = "Open a terminal in the current repository", action = function() Workspace.Git_Status(root) end },
 		{ label = "Save current project as layout", detail = "Capture structure and editable file contents", action = function() Project.Save_Layout() end },
 		{ label = "Apply a layout to a new project", detail = "Choose a reusable project template", action = function() Project.Load_Layout() end },
@@ -409,6 +369,7 @@ local function Render()
 	lines[#lines + 1] = "   t   Task board                     w   Run configurations"
 	lines[#lines + 1] = "   f   Find files                     /   Search project text"
 	lines[#lines + 1] = "   d   Find TODO / FIXME markers      x   Project diagnostics"
+	lines[#lines + 1] = "   H   Save history / rollback        S   Create hard save"
 	lines[#lines + 1] = "   g   Git status                     b   Switch buffer"
 	lines[#lines + 1] = ""
 	lines[#lines + 1] = "  CUSTOMIZE"
@@ -446,6 +407,12 @@ function Workspace.Open(root)
 	Map("/", function() Workspace.Search_Text(State.root or vim.fn.getcwd()) end, "Search project text")
 	Map("d", function() Workspace.Scan_Todos(State.root or vim.fn.getcwd()) end, "Find TODO and FIXME markers")
 	Map("x", function() Workspace.Diagnostics(State.root or vim.fn.getcwd()) end, "Show project diagnostics")
+	Map("H", function() Close(); require("hypermax.history").Open(State.root) end, "Open save history and rollbacks")
+	Map("S", function()
+		local root = State.root
+		local ok, result = require("hypermax.history").Save(root, "hard")
+		Notify(ok and ("Hard save created: " .. result.id) or tostring(result), ok and vim.log.levels.INFO or vim.log.levels.ERROR)
+	end, "Create a hard save point")
 	Map("g", function() Workspace.Git_Status(State.root or vim.fn.getcwd()) end, "Show Git status")
 	Map("b", Open_Buffers, "Switch buffer")
 	Map("<CR>", function()

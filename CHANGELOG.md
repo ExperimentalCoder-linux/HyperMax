@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 — Workspace history, settings and UI refinement
+
+- Added hard save points, automatic soft saves after successful run configurations, optional Brotli compression, and a guarded rollback workflow with pre-restore safety snapshots.
+- Added project-scoped diagnostics collection and quickfix navigation in `diagnostics.lua`; removed the empty, misspelled `diagonstics.lua` module.
+- Added shared floating-window placement for cardinal, corner and centered context positions.
+- Added persistent task pinning and configurable pinned-section placement.
+- Added project-local workspace settings for entry points, hidden files, path exclusions, tabline visibility, context placement and automatic saves.
+- Reworked Settings into nested categories with Back navigation, made progress windows closable with `q` or Escape, and fixed the open-after-creation window transition.
+- Added regression tests and updated user/developer documentation.
+
 ## 0.4.1 — Test reliability fixes
 
 - Corrected project-index tests to compare canonical absolute paths consistently.

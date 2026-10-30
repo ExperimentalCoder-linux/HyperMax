@@ -51,6 +51,9 @@ local test_files = {
 	"tests/test_workspace.lua",
 	"tests/test_dashboard.lua",
 	"tests/test_dashboard_deep.lua",
+	"tests/test_history.lua",
+	"tests/test_diagnostics.lua",
+	"tests/test_window.lua",
 }
 
 -- =========================================================

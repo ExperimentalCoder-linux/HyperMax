@@ -13,6 +13,9 @@ local SORT_MODES = { "alphabetical", "file type", "modified", "created" }
 local IGNORED_DIRECTORIES = {
 	[".git"] = true,
 	[".hmc"] = true,
+	[".ssh"] = true,
+	[".aws"] = true,
+	[".gnupg"] = true,
 	["node_modules"] = true,
 	["vendor"] = true,
 	["target"] = true,
@@ -31,6 +34,8 @@ local State = {
 	metadata = {},
 	git = { available = false, branch = nil, statuses = {} },
 	sort_mode = 1,
+	settings = {},
+	previous_showtabline = nil,
 	items = {},
 	line_by_path = {},
 }
@@ -116,8 +121,11 @@ local function Get_Project_Metadata(root)
 	local basics = loaded.basics or {}
 	local project = basics.project or {}
 	local entry_point = project.entry_point or {}
+	local settings = type(loaded.config.settings) == "table" and loaded.config.settings or {}
+	local configured_entry = type(settings.entry_point) == "table" and settings.entry_point or {}
 
-	local entry_file = entry_point.file or project.entry_file or ""
+	local entry_file = type(configured_entry.file) == "string"
+		and configured_entry.file or entry_point.file or project.entry_file or ""
 	entry_file = tostring(entry_file):gsub("\\", "/"):gsub("^%./", "")
 
 	return {
@@ -128,7 +136,7 @@ local function Get_Project_Metadata(root)
 		creator = project.creator or "unknown",
 		created_at = project.created_at,
 		entry_file = entry_file,
-		entry_function = entry_point["function"] or entry_point.function_name or project.entry_function or "main",
+		entry_function = configured_entry["function"] or entry_point["function"] or entry_point.function_name or project.entry_function or "main",
 		git_enabled = basics.git and basics.git.enabled == true or false,
 	}
 end
@@ -163,6 +171,59 @@ end
 -- PROJECT TREE
 -- =========================================================
 
+local function Glob_Pattern(pattern)
+	local output, index = {}, 1
+	while index <= #pattern do
+		local character = pattern:sub(index, index)
+		local next_character = pattern:sub(index + 1, index + 1)
+		if character == "*" and next_character == "*" and pattern:sub(index + 2, index + 2) == "/" then
+			-- **/ also matches files directly at the project root.
+			output[#output + 1] = "(.-/)?"
+			index = index + 3
+		elseif character == "*" and next_character == "*" then
+			output[#output + 1] = ".*"
+			index = index + 2
+		elseif character == "*" then
+			output[#output + 1] = "[^/]*"
+			index = index + 1
+		elseif character == "?" then
+			output[#output + 1] = "[^/]"
+			index = index + 1
+		else
+			if character:match("[%^%$%(%)%%%.%[%]%+%-]") then
+				output[#output + 1] = "%" .. character
+			else
+				output[#output + 1] = character
+			end
+			index = index + 1
+		end
+	end
+	return table.concat(output)
+end
+
+local function Is_Excluded(relative_path, patterns)
+	for _, pattern in ipairs(patterns or {}) do
+		if type(pattern) == "string" then
+			pattern = vim.trim(pattern):gsub("\\", "/")
+			if pattern ~= "" and pattern:sub(1, 1) ~= "/" and not pattern:match("^%a:") then
+				local lua_pattern = Glob_Pattern(pattern)
+				if relative_path:match("^" .. lua_pattern .. "$")
+					or relative_path:match("^" .. lua_pattern .. "/") then
+					return true
+				end
+				-- A simple name or wildcard (for example `build` or `*.log`)
+				-- applies at any depth in the project tree.
+				if not pattern:find("/", 1, true) then
+					for segment in relative_path:gmatch("[^/]+") do
+						if segment:match("^" .. lua_pattern .. "$") then return true end
+					end
+				end
+			end
+		end
+	end
+	return false
+end
+
 local function Build_Tree(directory, depth, counter)
 	local entries = {}
 	local handle = uv.fs_scandir(directory)
@@ -178,8 +239,20 @@ local function Build_Tree(directory, depth, counter)
 			break
 		end
 
-		local hidden_hmc_backup = name:match("^%.hmc%.backup%-") ~= nil
-		if not hidden_hmc_backup and not (kind == "directory" and IGNORED_DIRECTORIES[name]) then
+		local relative_directory = directory == State.root and "" or directory:sub(#State.root + 2)
+		local relative_path = relative_directory == "" and name or (relative_directory .. "/" .. name)
+		local show_hidden = State.settings.show_hidden ~= false
+		local is_hidden = name:sub(1, 1) == "."
+		local is_hmc_backup = name:match("^%.hmc%.backup%-") ~= nil
+		local excluded = Is_Excluded(relative_path, State.settings.exclude_paths)
+		local ignored_directory = kind == "directory" and IGNORED_DIRECTORIES[name] == true
+		-- Keep the two metadata roots protected, but let the hidden-file toggle
+		-- reveal other hidden directories such as .venv and cache folders.
+		if show_hidden and is_hidden and name ~= ".git" and name ~= ".hmc"
+			and name ~= ".ssh" and name ~= ".aws" and name ~= ".gnupg" then
+			ignored_directory = false
+		end
+		if not is_hmc_backup and not excluded and (show_hidden or not is_hidden) and not ignored_directory then
 			if kind == "directory" or kind == "file" then
 				local path = Join(directory, name)
 				local stat = uv.fs_stat(path) or {}
@@ -356,6 +429,7 @@ local function Render()
 	Add("  m      Workspace  t  Task board  w  Run configurations")
 	Add("  f      Find files  /  Search text")
 	Add("  ? + -  Git markers: modified/untracked/added")
+	Add("  H      Save history   h  Show/hide hidden files")
 	Add("  r      Refresh   q  Close panel")
 
 	local cursor_line = 1
@@ -446,6 +520,7 @@ local function Refresh()
 	end
 
 	State.metadata = metadata
+	State.settings = Project_Config.Get_Project_Settings(State.root) or {}
 	State.entry_path = metadata.entry_file ~= "" and Join(State.root, metadata.entry_file) or nil
 	Refresh_Git()
 	State.tree = Build_Tree(State.root, 0, { count = 0 })
@@ -825,6 +900,10 @@ local function Close_Panel()
 		State.window = nil
 		pcall(vim.api.nvim_win_close, panel, true)
 	end
+	if State.previous_showtabline ~= nil then
+		vim.o.showtabline = State.previous_showtabline
+		State.previous_showtabline = nil
+	end
 end
 
 local function Set_Keymaps(buf)
@@ -850,6 +929,14 @@ local function Set_Keymaps(buf)
 	Map("m", function() require("hypermax.workspace").Open(State.root) end, "HyperMax: open workspace home")
 	Map("t", function() require("hypermax.flow").Open_Tasks(State.root) end, "HyperMax: open task board")
 	Map("w", function() require("hypermax.flow").Open_Runners(State.root) end, "HyperMax: open run configurations")
+	Map("H", function() require("hypermax.history").Open(State.root) end, "HyperMax: open save history")
+	Map("h", function()
+		local value = State.settings.show_hidden == false
+		local ok, err = Project_Config.Save_Project_Settings(State.root, { show_hidden = value })
+		if not ok then Notify("Could not update hidden-file setting: " .. tostring(err), vim.log.levels.ERROR); return end
+		Refresh()
+		Notify(value and "Hidden files and folders are visible" or "Hidden files and folders are hidden")
+	end, "HyperMax: toggle hidden files and folders")
 	Map("f", function() require("hypermax.workspace").Find_Files(State.root) end, "HyperMax: find project files")
 	Map("/", function() require("hypermax.workspace").Search_Text(State.root) end, "HyperMax: search project text")
 	Map("r", Refresh, "HyperMax: refresh project panel")
@@ -886,7 +973,7 @@ function Dashboard.Find_Project_Root(path)
 
 	while path and path ~= "" do
 		if Dashboard.Is_Project(path) then
-			return path
+			return Normalize_Path(path)
 		end
 
 		local parent = vim.fn.fnamemodify(path, ":h")
@@ -900,7 +987,7 @@ function Dashboard.Find_Project_Root(path)
 end
 
 function Dashboard.Open(project_root)
-	project_root = vim.fn.fnamemodify(vim.fn.expand(project_root or vim.fn.getcwd()), ":p")
+	project_root = Normalize_Path(vim.fn.expand(project_root or vim.fn.getcwd()))
 
 	if not Dashboard.Is_Project(project_root) then
 		Notify("Not a HyperMax project: " .. project_root, vim.log.levels.WARN)
@@ -927,6 +1014,11 @@ function Dashboard.Open(project_root)
 
 	State.root = project_root
 	State.metadata = metadata
+	State.settings = Project_Config.Get_Project_Settings(project_root) or {}
+	if State.previous_showtabline == nil then
+		State.previous_showtabline = vim.o.showtabline
+	end
+	vim.o.showtabline = State.settings.show_tabs == false and 0 or 2
 	State.entry_path = metadata.entry_file ~= "" and Join(project_root, metadata.entry_file) or nil
 	State.expanded = {}
 	State.sort_mode = State.sort_mode or 1

@@ -186,6 +186,8 @@ function Keymaps.Setup(Project, Settings, Layouts)
 			"Save current project as layout",
 			"Edit saved layout",
 			"Open last project",
+			"Save history / rollback",
+			"Create hard save point",
 			"List layouts",
 			"Health Check",
 			"Convert current folder into project",
@@ -210,6 +212,12 @@ function Keymaps.Setup(Project, Settings, Layouts)
 				Project.Edit_Layout()
 			elseif choice == "Open last project" then
 				Project.Open_Last()
+			elseif choice == "Save history / rollback" then
+				require("hypermax.history").Open()
+			elseif choice == "Create hard save point" then
+				local ok, result = require("hypermax.history").Save(nil, "hard")
+				vim.notify(ok and ("HyperMax: Hard save created: " .. result.id) or ("HyperMax: " .. tostring(result)),
+					ok and vim.log.levels.INFO or vim.log.levels.ERROR)
 			elseif choice == "List layouts" then
 				local ids = Layouts.Get_IDs()
 				local choices = {}
@@ -308,6 +316,16 @@ function Keymaps.Setup(Project, Settings, Layouts)
 	Map("s", function()
 		Settings.Open()
 	end, "Settings")
+
+	Map("H", function()
+		require("hypermax.history").Open()
+	end, "Browse save history and rollbacks")
+
+	Map("S", function()
+		local ok, result = require("hypermax.history").Save(nil, "hard")
+		vim.notify(ok and ("HyperMax: Hard save created: " .. result.id) or ("HyperMax: " .. tostring(result)),
+			ok and vim.log.levels.INFO or vim.log.levels.ERROR)
+	end, "Create a hard save point")
 
 	Map("l", function()
 		Project.Load_Layout()

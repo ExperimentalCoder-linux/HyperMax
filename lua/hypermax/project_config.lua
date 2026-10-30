@@ -6,6 +6,20 @@ Project_Config.global_path = nil
 local DATA_VERSION = 1
 local HISTORY_HEADER = "HMXHIST\0" .. string.char(0, 0, 0, DATA_VERSION)
 
+-- These settings belong to one project and are stored in .hmc/config.json.
+-- Global project-generation defaults remain in the user's Neovim data folder.
+local DEFAULT_PROJECT_SETTINGS = {
+	entry_point = {
+		["function"] = "main",
+	},
+	show_hidden = true,
+	exclude_paths = {},
+	show_tabs = true,
+	context_position = "center",
+	pinned_tasks_position = "top",
+	auto_save_after_success = true,
+}
+
 local IGNORED_DIRECTORIES = {
 	[".git"] = true,
 	[".hmc"] = true,
@@ -173,7 +187,7 @@ local function Capture_Directory(project_root)
 				break
 			end
 
-			local metadata_path = name == ".git" or name == ".hmc"
+			local metadata_path = name == ".git" or name == ".hmc" or name:match("^%.hmc%.backup%-") ~= nil
 			if not metadata_path and not (kind == "directory" and IGNORED_DIRECTORIES[name]) then
 				local relative_path = relative == "" and name or relative .. "/" .. name
 
@@ -239,7 +253,7 @@ end
 local function Default_Project_Config()
 	return {
 		version = DATA_VERSION,
-		settings = {},
+		settings = vim.deepcopy(DEFAULT_PROJECT_SETTINGS),
 	}
 end
 
@@ -529,6 +543,19 @@ function Project_Config.Load(project_root)
 	}
 end
 
+-- Return the effective per-project settings, filling keys missing from older
+-- .hmc/config.json files with defaults without mutating the stored file.
+function Project_Config.Get_Project_Settings(project_root)
+	project_root = vim.fn.fnamemodify(project_root, ":p")
+	if not Project_Config.Exists(project_root) then
+		return nil, "No .hmc directory exists in this project"
+	end
+	local saved_config, err = Read_Legacy_Config(Get_HMC_Paths(project_root))
+	if not saved_config then return nil, err end
+	local saved = type(saved_config.settings) == "table" and saved_config.settings or {}
+	return vim.tbl_deep_extend("force", vim.deepcopy(DEFAULT_PROJECT_SETTINGS), saved)
+end
+
 -- =========================================================
 -- GLOBAL PROJECT REGISTRY
 -- =========================================================
@@ -742,6 +769,10 @@ end
 -- =========================================================
 
 function Project_Config.Save_Project_Settings(project_root, settings)
+	if type(settings) ~= "table" then
+		return false, "Project settings must be provided as a table"
+	end
+
 	local paths = Get_HMC_Paths(vim.fn.fnamemodify(project_root, ":p"))
 
 	if not Project_Config.Exists(project_root) then
@@ -754,7 +785,11 @@ function Project_Config.Save_Project_Settings(project_root, settings)
 		return false, err
 	end
 
-	config.settings = config.settings or {}
+	config.settings = vim.tbl_deep_extend(
+		"force",
+		vim.deepcopy(DEFAULT_PROJECT_SETTINGS),
+		type(config.settings) == "table" and config.settings or {}
+	)
 
 	for key, value in pairs(settings) do
 		config.settings[key] = value

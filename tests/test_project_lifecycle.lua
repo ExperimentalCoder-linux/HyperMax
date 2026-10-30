@@ -164,6 +164,18 @@ Test.Run("Project capture excludes a Git worktree .git pointer file", function()
 	Cleanup(root)
 end)
 
+Test.Run("Project capture excludes old .hmc conversion backups", function()
+	local root = Root()
+	Write(root .. "/.hmc.backup-20261030-112000/basics.json", "private old project metadata")
+	Write(root .. "/main.lua", "print('portable project')\n")
+	assert(Config.Create(root, { name = "Portable capture", language = "lua" }))
+	local loaded = assert(Config.Load(root))
+	for _, entry in ipairs(loaded.layout.entries) do
+		Test.False(entry.path:match("^%.hmc%.backup%-") ~= nil, "Metadata backups must not enter reusable layouts")
+	end
+	Cleanup(root)
+end)
+
 Test.Run("Project capture excludes .hmc and .git but keeps dotfiles and paths", function()
 	local root = Root()
 	Write(root .. "/.git/config", "repository")

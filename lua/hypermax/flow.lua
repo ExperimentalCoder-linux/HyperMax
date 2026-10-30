@@ -1,6 +1,8 @@
 -- HyperMax project task board and run configurations.
 -- All project-specific state is stored under .hmc/workspace.json.
 local Flow = {}
+local Project_Config = require("hypermax.project_config")
+local Window = require("hypermax.window")
 
 local SCHEMA_VERSION = 1
 local STATUS = { "todo", "doing", "done" }
@@ -74,6 +76,8 @@ local function Normalize_Data(data)
 					detail = Clean_String(item.detail, "", 4000),
 					status = status,
 					priority = priority,
+					pinned = item.pinned == true,
+					pinned_at = item.pinned == true and (tonumber(item.pinned_at) or tonumber(item.updated_at) or os.time()) or nil,
 					created_at = tonumber(item.created_at) or os.time(),
 					updated_at = tonumber(item.updated_at) or tonumber(item.created_at) or os.time(),
 				}
@@ -210,6 +214,7 @@ function Flow.Add_Task(root, title, detail, priority)
 		id = New_ID("task", data.tasks), title = title,
 		detail = Clean_String(detail, "", 4000),
 		status = "todo", priority = Includes(PRIORITY, priority) and priority or "normal",
+		pinned = false,
 		created_at = os.time(), updated_at = os.time(),
 	}
 	data.tasks[#data.tasks + 1] = task
@@ -232,8 +237,25 @@ function Flow.Update_Task(root, id, changes)
 	if changes.detail ~= nil then task.detail = Clean_String(changes.detail, "", 4000) end
 	if Includes(STATUS, changes.status) then task.status = changes.status end
 	if Includes(PRIORITY, changes.priority) then task.priority = changes.priority end
+	if changes.pinned ~= nil then
+		task.pinned = changes.pinned == true
+		task.pinned_at = task.pinned and os.time() or nil
+	end
 	task.updated_at = os.time()
 	return Save(actual_root, data)
+end
+
+function Flow.Toggle_Task_Pinned(root, id)
+	local data, err, actual_root = Load(root)
+	if not data then return false, err end
+	local task = Find_Item(data.tasks, id)
+	if not task then return false, "Task no longer exists" end
+	task.pinned = not task.pinned
+	task.pinned_at = task.pinned and os.time() or nil
+	task.updated_at = os.time()
+	local saved, save_error = Save(actual_root, data)
+	if not saved then return false, save_error end
+	return true, task
 end
 
 function Flow.Delete_Task(root, id)
@@ -344,13 +366,7 @@ local function Open_Window(title, height)
 	vim.bo[buf].bufhidden = "wipe"
 	vim.bo[buf].swapfile = false
 	vim.bo[buf].filetype = "hypermaxflow"
-	local win = vim.api.nvim_open_win(buf, true, {
-		relative = "editor", style = "minimal", border = "rounded",
-		width = width, height = height,
-		row = math.max(1, math.floor((vim.o.lines - height) / 2) - 1),
-		col = math.max(1, math.floor((vim.o.columns - width) / 2)),
-		title = "  " .. title .. "  ", title_pos = "center",
-	})
+	local win = Window.Open_Float(buf, title, width, height, active.root)
 	vim.wo[win].number = false
 	vim.wo[win].relativenumber = false
 	vim.wo[win].signcolumn = "no"
@@ -417,20 +433,38 @@ local function Render_Tasks()
 	local data, err = Load(active.root)
 	if not data then Notify(tostring(err), vim.log.levels.ERROR); return end
 	active.items = {}
+	local project_settings = Project_Config.Get_Project_Settings(active.root) or {}
+	local pinned_position = project_settings.pinned_tasks_position == "bottom" and "bottom" or "top"
 	local lines = {
 		"  PLAN  /  TRACK  /  FINISH",
 		"  Project: " .. vim.fs.basename(active.root),
 		"  ─────────────────────────────────────────────────────────────────────────────",
-		"  TODO",
 	}
+	local function Add_Pinned()
+		local count = 0
+		for _, task in ipairs(data.tasks) do if task.pinned then count = count + 1 end end
+		if count == 0 then return end
+		lines[#lines + 1] = "  PINNED TASKS  /  SAVED IN THIS WORKSPACE"
+		lines[#lines + 1] = "  " .. string.rep("─", 76)
+		for _, task in ipairs(data.tasks) do
+			if task.pinned then
+				local marker = task.priority == "high" and "!!!" or (task.priority == "low" and " · " or " ! ")
+				lines[#lines + 1] = string.format("  ★ [%s] %s  [%s]", task.status:upper(), task.title, marker)
+				active.items[#lines] = task
+			end
+		end
+		lines[#lines + 1] = ""
+	end
+	if pinned_position == "top" then Add_Pinned() end
+	lines[#lines + 1] = "  TODO"
 	local function Add_Group(status, label)
 		local count = 0
-		for _, task in ipairs(data.tasks) do if task.status == status then count = count + 1 end end
+		for _, task in ipairs(data.tasks) do if task.status == status and not task.pinned then count = count + 1 end end
 		if status ~= "todo" then lines[#lines + 1] = ""; lines[#lines + 1] = "  " .. label end
 		lines[#lines + 1] = "  " .. string.rep("─", 76)
 		if count == 0 then lines[#lines + 1] = "    Nothing here yet" end
 		for _, task in ipairs(data.tasks) do
-			if task.status == status then
+			if task.status == status and not task.pinned then
 				local marker = task.priority == "high" and "!!!" or (task.priority == "low" and " · " or " ! ")
 				lines[#lines + 1] = string.format("  %s  [%s] %s", marker, task.priority:upper(), task.title)
 				active.items[#lines] = task
@@ -440,8 +474,12 @@ local function Render_Tasks()
 	Add_Group("todo", "TODO")
 	Add_Group("doing", "IN PROGRESS")
 	Add_Group("done", "DONE")
+	if pinned_position == "bottom" then
+		lines[#lines + 1] = ""
+		Add_Pinned()
+	end
 	lines[#lines + 1] = ""
-	lines[#lines + 1] = "  a Add  e Edit  s Move status  p Priority  d Mark done  x Delete  Enter Details  q Close"
+	lines[#lines + 1] = "  a Add  e Edit  s Status  p Priority  P Pin/unpin  d Done  x Delete  Enter Details  q Close"
 	Set_Lines(lines)
 	if active.window and vim.api.nvim_win_is_valid(active.window) then
 		vim.api.nvim_win_set_cursor(active.window, { math.min(vim.api.nvim_win_get_cursor(active.window)[1], #lines), 0 })
@@ -492,6 +530,12 @@ function Flow.Open_Tasks(root)
 		local ok, err = Flow.Update_Task(active.root, task.id, { priority = PRIORITY[index % #PRIORITY + 1] })
 		if not ok then Notify(tostring(err), vim.log.levels.ERROR) else Render_Tasks() end
 	end, "Cycle task priority")
+	Map("P", function()
+		local task = Current_Item(); if not task then return end
+		local ok, result = Flow.Toggle_Task_Pinned(active.root, task.id)
+		if not ok then Notify(tostring(result), vim.log.levels.ERROR)
+		else Notify(result.pinned and "Task pinned in the workspace" or "Task unpinned"); Render_Tasks() end
+	end, "Pin or unpin task in the workspace")
 	Map("d", function()
 		local task = Current_Item(); if not task then return end
 		local status = task.status == "done" and "todo" or "done"
@@ -601,6 +645,16 @@ function Flow.Run_Runner(root, id)
 				completed.last_run = os.time()
 				completed.last_exit_code = tonumber(exit_code) or -1
 				Save(actual_root, latest)
+				if completed.last_exit_code == 0 then
+					local project_settings = Project_Config.Get_Project_Settings(actual_root) or {}
+					if project_settings.auto_save_after_success ~= false then
+						local History = require("hypermax.history")
+						local saved, snapshot = History.Save(actual_root, "soft", "Successful run: " .. completed.name)
+						if not saved then
+							Notify("Run succeeded, but automatic save failed: " .. tostring(snapshot), vim.log.levels.WARN)
+						end
+					end
+				end
 				if active.mode == "runners" and active.root == actual_root then Render_Runners() end
 			end)
 		end,
@@ -622,6 +676,11 @@ end
 
 function Flow.Get_State()
 	return active
+end
+
+function Flow.Refresh()
+	if active.mode == "tasks" then Render_Tasks()
+	elseif active.mode == "runners" then Render_Runners() end
 end
 
 function Flow.Open_Runners(root)

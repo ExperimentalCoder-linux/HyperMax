@@ -98,6 +98,8 @@ Mappings are created in normal mode and use your configured `mapleader`.
 | `<leader>+f` | Find a file in the current project |
 | `<leader>+/` | Search text in the current project with ripgrep |
 | `<leader>+x` | Review diagnostics for the current project |
+| `<leader>+H` | Browse save points and roll back a project |
+| `<leader>+S` | Create a manual hard save point |
 
 If a mapping conflicts with your own setup, change or remove it in your Neovim configuration.
 
@@ -114,6 +116,8 @@ When a HyperMax project is open, its persistent sidebar supports these normal-mo
 | `s` | Cycle sorting: alphabetical → file type → modified date → created date |
 | `g` | Open Git actions: status, stage/unstage, commit, fetch/pull/push, branches, remotes, tags, stashes, diffs, and history |
 | `G` | Initialize a Git repository in this project if it is not already one |
+| `H` | Open save-point history and rollback controls |
+| `h` | Toggle hidden files and folders (also saved to this project's settings) |
 | `r` | Refresh the tree and Git status |
 | `q` | Close the sidebar |
 
@@ -143,6 +147,8 @@ HyperMax stores a registry of project paths and recent-open information in its g
 | `:HyperMaxTasks` | Open the current project's task board |
 | `:HyperMaxRuns` | Manage project run configurations |
 | `:HyperMaxDiagnostics` | Show diagnostics for the current project in quickfix |
+| `:HyperMaxHistory` | Browse hard/soft save points and restore a selected state |
+| `:HyperMaxSavePoint` | Create a manual hard save point |
 
 ## Workspace home, task flow and run configurations
 
@@ -152,13 +158,21 @@ The workspace includes project switching and creation, the project explorer, rec
 
 ### Task board
 
-Use `<leader>+t` or `:HyperMaxTasks` inside a HyperMax project. Tasks have a title, optional details, one of three states (`todo`, `doing`, `done`) and a priority (`low`, `normal`, `high`). The board supports adding, editing, moving, reprioritising, completing and deleting tasks. Tasks are saved per project in `.hmc/workspace.json`.
+Use `<leader>+t` or `:HyperMaxTasks` inside a HyperMax project. Tasks have a title, optional details, one of three states (`todo`, `doing`, `done`) and a priority (`low`, `normal`, `high`). The board supports adding, editing, moving, reprioritising, completing and deleting tasks. Press `P` to pin or unpin a task; pinned tasks remain in a dedicated section at the configured top or bottom of the board. Tasks and pin state are saved per project in `.hmc/workspace.json`.
 
 ### Run configurations
 
-Use `<leader>+w` or `:HyperMaxRuns` to create named commands such as CMake builds, test suites, formatters, or launch commands. Each configuration stores a name, command, project-relative working directory and optional description. Select a configuration and press `Enter` or `r` to launch it in a terminal split.
+Use `<leader>+w` or `:HyperMaxRuns` to create named commands such as CMake builds, test suites, formatters, or launch commands. Each configuration stores a name, command, project-relative working directory and optional description. Select a configuration and press `Enter` or `r` to launch it in a terminal split. When a run exits successfully, HyperMax creates a soft save point automatically unless the project's `auto_save_after_success` setting is disabled.
 
 Run commands are project data and are executed only after an explicit Run action. Review commands before running them, especially when opening projects from untrusted sources. Working directories are restricted to existing paths inside the project, including real-path checks that reject symlink escapes. Configuration definitions are stored alongside the task board in `.hmc/workspace.json` and are not part of reusable layouts.
+
+### Save points and rollback
+
+Use `<leader>+S` or `:HyperMaxSavePoint` to create a hard save point, and `<leader>+H` or `:HyperMaxHistory` to browse saved states. The history window lets you create, delete and restore save points. Before restoring, HyperMax creates a safety save of the current workspace. A rollback is refused when either the target snapshot or safety snapshot contains files it could not capture completely. Git metadata is preserved; `.hmc` project settings and workspace data are included, while `.hmc/history` is excluded to prevent recursive snapshots. Brotli compression is used when the `brotli` executable is installed; otherwise snapshots are stored uncompressed. A successful runner creates a soft save by default.
+
+### Project-specific workspace settings
+
+The nested Settings menu separates project creation, saving/history, layouts, interface, utilities and workspace settings. Project settings are stored in `.hmc/config.json`, while global project-generation defaults stay in Neovim's global HyperMax configuration. Workspace settings include the entry-point file/function, hidden-file visibility, relative exclude patterns, tabline visibility, context-window position, pinned-task placement and automatic save-after-success. The dashboard's `h` key toggles hidden files and persists that choice. Protected `.git` and `.hmc` metadata directories remain out of the tree; other hidden directories (including `.venv` and hidden cache folders) are revealed when the option is enabled. Context windows can be anchored to `N`, `E`, `S`, `W`, corners such as `NE`/`SW`, or centered (`NS`/`EW`/`center`).
 
 ### Search and navigation
 

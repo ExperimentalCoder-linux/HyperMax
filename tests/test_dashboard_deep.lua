@@ -315,5 +315,84 @@ Test.Run("Dashboard created sorting is safe with filesystem timestamp fallbacks"
 	Cleanup(root)
 end)
 
+Test.Run("Dashboard hidden-file and exclusion settings are applied at every depth", function()
+	local root = New_Project()
+	local function Write(relative, content)
+		local path = root .. "/" .. relative
+		vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
+		local file = assert(io.open(path, "w")); file:write(content); file:close()
+	end
+	Write(".env", "hidden\n")
+	Write(".private/secret.txt", "hidden folder\n")
+	Write(".venv/pyvenv.cfg", "hidden environment\n")
+	Write(".ssh/config", "private ssh configuration\n")
+	Write(".aws/config", "private cloud configuration\n")
+	Write(".hmc.backup-20261030-112000/basics.json", "machine-specific backup metadata\n")
+	Write("build/output.o", "excluded build\n")
+	Write("src/debug.log", "excluded log\n")
+	Write("visible.txt", "visible\n")
+	assert(Project_Config.Save_Project_Settings(root, {
+		show_hidden = false,
+		exclude_paths = { "build", "*.log" },
+	}))
+	local state = Open(root)
+	local function Flatten(entries, result)
+		for _, entry in ipairs(entries) do
+			result[entry.path:sub(#root + 2)] = true
+			Flatten(entry.children or {}, result)
+		end
+		return result
+	end
+	local hidden_tree = Flatten(state.tree, {})
+	Test.False(hidden_tree[".env"])
+	Test.False(hidden_tree[".private"])
+	Test.False(hidden_tree[".venv"])
+	Test.False(hidden_tree[".hmc.backup-20261030-112000"])
+	Test.False(hidden_tree["build"])
+	Test.False(hidden_tree["src/debug.log"])
+	Test.True(hidden_tree["visible.txt"])
+	assert(Project_Config.Save_Project_Settings(root, { show_hidden = true }))
+	Dashboard.Refresh()
+	local visible_tree = Flatten(Dashboard.Get_State().tree, {})
+	Test.True(visible_tree[".env"])
+	Test.True(visible_tree[".private"])
+	Test.True(visible_tree[".venv"], "Hidden dependency/cache folders are visible when hidden items are enabled")
+	Test.False(visible_tree[".hmc.backup-20261030-112000"], "Generated machine-specific backup folders remain hidden")
+	Test.False(visible_tree[".ssh"], "Sensitive SSH folders remain protected")
+	Test.False(visible_tree[".aws"], "Sensitive cloud credentials remain protected")
+	Test.False(visible_tree["build"])
+	Test.False(visible_tree["src/debug.log"])
+	Dashboard.Close()
+	Cleanup(root)
+end)
+
+Test.Run("Dashboard custom entry point settings override and clear project defaults", function()
+	local root = New_Project()
+	assert(Project_Config.Save_Project_Settings(root, {
+		entry_point = { file = "src/custom.c", ["function"] = "boot" },
+	}))
+	local state = Open(root)
+	Test.Equal("src/custom.c", state.metadata.entry_file)
+	Test.Equal("boot", state.metadata.entry_function)
+	assert(Project_Config.Save_Project_Settings(root, {
+		entry_point = { file = "", ["function"] = "main" },
+	}))
+	Dashboard.Refresh()
+	Test.Equal("", Dashboard.Get_State().metadata.entry_file)
+	Dashboard.Close()
+	Cleanup(root)
+end)
+
+Test.Run("Dashboard restores the previous tabline setting when closed", function()
+	local root = New_Project()
+	local original = vim.o.showtabline
+	assert(Project_Config.Save_Project_Settings(root, { show_tabs = false }))
+	Open(root)
+	Test.Equal(0, vim.o.showtabline)
+	Dashboard.Close()
+	Test.Equal(original, vim.o.showtabline)
+	Cleanup(root)
+end)
+
 Project_Config.global_path = original_global_path
 pcall(vim.fn.delete, test_global_root, "rf")

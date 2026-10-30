@@ -8,7 +8,7 @@ local Flow = require("hypermax.flow")
 
 local HyperMax = {}
 
-HyperMax.version = "0.4.1"
+HyperMax.version = "0.5.0"
 
 local function Register_Commands()
 	local commands = {
@@ -22,6 +22,8 @@ local function Register_Commands()
 		"HyperMaxTasks",
 		"HyperMaxRuns",
 		"HyperMaxDiagnostics",
+		"HyperMaxHistory",
+		"HyperMaxSavePoint",
 	}
 
 	for _, command in ipairs(commands) do
@@ -73,6 +75,14 @@ local function Register_Commands()
 	vim.api.nvim_create_user_command("HyperMaxDiagnostics", function()
 		Workspace.Diagnostics()
 	end, { desc = "Show diagnostics scoped to the current project" })
+	vim.api.nvim_create_user_command("HyperMaxHistory", function()
+		require("hypermax.history").Open()
+	end, { desc = "Browse project save points and roll back" })
+	vim.api.nvim_create_user_command("HyperMaxSavePoint", function()
+		local ok, result = require("hypermax.history").Save(nil, "hard")
+		vim.notify(ok and ("HyperMax: Hard save created: " .. result.id) or ("HyperMax: " .. tostring(result)),
+			ok and vim.log.levels.INFO or vim.log.levels.ERROR)
+	end, { desc = "Create a hard project save point" })
 end
 
 function HyperMax.setup(options)
@@ -143,6 +153,14 @@ end
 
 function HyperMax.open_diagnostics()
 	Workspace.Diagnostics()
+end
+
+function HyperMax.open_history()
+	return require("hypermax.history").Open()
+end
+
+function HyperMax.save_point()
+	return require("hypermax.history").Save(nil, "hard")
 end
 
 return HyperMax

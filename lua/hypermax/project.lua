@@ -705,7 +705,7 @@ local function Create_From_Manifest(root, manifest, options)
 	local completed = 0
 
 	if options.show_progress then
-		Progress.Start("Creating project", total)
+		Progress.Start("Creating project", total, root)
 		Progress.Log("Project: " .. root)
 	end
 
@@ -812,6 +812,10 @@ local function Open_Project(root, entry, options)
 	if not options.open_after_create then
 		return
 	end
+
+	-- Close the temporary progress float before opening the entry point or
+	-- explorer. Otherwise Neovim can split the progress buffer into the new UI.
+	Progress.Close()
 
 	local relative_entry = entry or ""
 
@@ -1283,7 +1287,8 @@ local function Scan_Directory(root)
 			local relative_path = relative == "" and name or (relative .. "/" .. name)
 			local full_path = Join_Path(directory, name)
 
-			if not ignored[name] and Is_Safe_Relative_Path(relative_path) then
+			local metadata_backup = name:match("^%.hmc%.backup%-") ~= nil
+			if not ignored[name] and not metadata_backup and Is_Safe_Relative_Path(relative_path) then
 				if kind == "directory" then
 					layout.directories[#layout.directories + 1] = relative_path
 					Walk(full_path, relative_path)
