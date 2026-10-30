@@ -145,9 +145,28 @@ Test.Run("Project list sorts recently opened projects first", function()
 	assert(Config.Create(first, { name = "Alpha recent test" }))
 	assert(Config.Create(second, { name = "Zulu recent test" }))
 	assert(Config.Mark_Project_Opened(first))
+	local first_registry = assert(Config.Get_Global())
+	local first_order
+	for _, entry in ipairs(first_registry.projects) do
+		if entry.path == vim.fn.fnamemodify(first, ":p"):gsub("/+$", "") then
+			first_order = entry.last_open_order
+		end
+	end
 	assert(Config.Mark_Project_Opened(second))
+	local second_registry = assert(Config.Get_Global())
+	local second_order
+	for _, entry in ipairs(second_registry.projects) do
+		if entry.path == vim.fn.fnamemodify(second, ":p"):gsub("/+$", "") then
+			second_order = entry.last_open_order
+		end
+	end
+	Test.True(tonumber(second_order) > tonumber(first_order), "Every project open should receive a strictly increasing order")
 	local projects = assert(Config.List_Projects())
-	Test.Equal(vim.fn.fnamemodify(second, ":p"):gsub("/+$", ""), projects[1].path)
+	local second_path = vim.fn.fnamemodify(second, ":p"):gsub("/+$", "")
+	Test.Equal(second_path, projects[1].path)
+	second_registry.last_project = ""
+	assert(Config.Save_Global(second_registry))
+	Test.Equal(second_path, Config.Get_Last_Project(), "Fallback last-project lookup should use the persisted open sequence")
 	Cleanup(first); Cleanup(second)
 end)
 

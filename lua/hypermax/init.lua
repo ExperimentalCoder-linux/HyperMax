@@ -5,10 +5,11 @@ local Project = require("hypermax.project")
 local Settings = require("hypermax.settings")
 local Workspace = require("hypermax.workspace")
 local Flow = require("hypermax.flow")
+local Tutorial = require("hypermax.tutorial")
 
 local HyperMax = {}
 
-HyperMax.version = "0.5.0"
+HyperMax.version = "0.6.0"
 
 local function Register_Commands()
 	local commands = {
@@ -24,6 +25,7 @@ local function Register_Commands()
 		"HyperMaxDiagnostics",
 		"HyperMaxHistory",
 		"HyperMaxSavePoint",
+		"HyperMaxTutorial",
 	}
 
 	for _, command in ipairs(commands) do
@@ -83,12 +85,16 @@ local function Register_Commands()
 		vim.notify(ok and ("HyperMax: Hard save created: " .. result.id) or ("HyperMax: " .. tostring(result)),
 			ok and vim.log.levels.INFO or vim.log.levels.ERROR)
 	end, { desc = "Create a hard project save point" })
+	vim.api.nvim_create_user_command("HyperMaxTutorial", function()
+		Tutorial.Open_Menu()
+	end, { desc = "Open the Essentials and Advanced tutorials" })
 end
 
 function HyperMax.setup(options)
 	Config.setup(options)
 	Register_Commands()
 	Keymaps.Setup(Project, Settings, Layouts)
+	require("hypermax.task_overlay").Setup()
 	-- Always open the dashboard when starting inside a HyperMax project.
 	vim.api.nvim_create_autocmd("VimEnter", {
 		group = vim.api.nvim_create_augroup("HyperMaxDashboard", {
@@ -112,6 +118,9 @@ function HyperMax.setup(options)
 			end
 		end,
 	})
+	-- This marker is stored under stdpath('data') and is not tied to the
+	-- plugin version, so installing an update never repeats first-run setup.
+	Tutorial.Setup_Startup()
 	return HyperMax
 end
 
@@ -157,6 +166,10 @@ end
 
 function HyperMax.open_history()
 	return require("hypermax.history").Open()
+end
+
+function HyperMax.open_tutorials()
+	return Tutorial.Open_Menu()
 end
 
 function HyperMax.save_point()

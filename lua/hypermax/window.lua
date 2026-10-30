@@ -35,13 +35,22 @@ function Window.Get_Position(root, fallback)
 	if type(position) ~= "string" then return "center" end
 	position = position:upper():gsub("[%s_%-]", "")
 
+	local aliases = {
+		NORTH = "N", SOUTH = "S", EAST = "E", WEST = "W",
+		NORTHEAST = "NE", NORTHWEST = "NW",
+		SOUTHEAST = "SE", SOUTHWEST = "SW",
+		MIDDLE = "CENTER", CENTRE = "CENTER", CENTER = "CENTER",
+		C = "CENTER",
+	}
+	position = aliases[position] or position
+
 	local allowed = {
 		N = true, S = true, E = true, W = true,
 		NE = true, NW = true, SE = true, SW = true,
-		NS = true, EW = true, C = true, CENTER = true,
+		NS = true, EW = true, CENTER = true,
 	}
 
-	return allowed[position] and position or "center"
+	return allowed[position] and (position == "CENTER" and "center" or position) or "center"
 end
 
 function Window.Get_Config(width, height, root, options)

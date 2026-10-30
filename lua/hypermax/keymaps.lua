@@ -182,6 +182,7 @@ function Keymaps.Setup(Project, Settings, Layouts)
 		vim.ui.select({
 			"Projects",
 			"Settings",
+			"Tutorials",
 			"Load layout",
 			"Save current project as layout",
 			"Edit saved layout",
@@ -204,6 +205,8 @@ function Keymaps.Setup(Project, Settings, Layouts)
 				Project.List()
 			elseif choice == "Settings" then
 				Settings.Open()
+			elseif choice == "Tutorials" then
+				require("hypermax.tutorial").Open_Menu()
 			elseif choice == "Load layout" then
 				Project.Load_Layout()
 			elseif choice == "Save current project as layout" then
@@ -275,6 +278,10 @@ function Keymaps.Setup(Project, Settings, Layouts)
 			end
 		end)
 	end, "Open menu")
+
+	Map("T", function()
+		require("hypermax.tutorial").Open_Menu()
+	end, "Open Essentials and Advanced tutorials")
 
 	-- =====================================================
 	-- PROJECTS

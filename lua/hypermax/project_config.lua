@@ -298,6 +298,7 @@ local function Default_Global_Config()
 		settings = {},
 		projects = {},
 		last_project = "",
+		last_open_order = 0,
 	}
 end
 
@@ -350,6 +351,13 @@ function Project_Config.Get_Global()
 	data.projects = type(data.projects) == "table" and data.projects or {}
 	data.last_project = type(data.last_project) == "string" and data.last_project or ""
 	data.settings = type(data.settings) == "table" and data.settings or {}
+	local last_open_order = tonumber(data.last_open_order) or 0
+	for _, entry in ipairs(data.projects) do
+		if type(entry) == "table" then
+			last_open_order = math.max(last_open_order, tonumber(entry.last_open_order) or 0)
+		end
+	end
+	data.last_open_order = last_open_order
 
 	return data
 end
@@ -366,6 +374,7 @@ function Project_Config.Save_Global(data)
 	data.projects = type(data.projects) == "table" and data.projects or {}
 	data.last_project = type(data.last_project) == "string" and data.last_project or ""
 	data.settings = type(data.settings) == "table" and data.settings or {}
+	data.last_open_order = tonumber(data.last_open_order) or 0
 
 	return Write_JSON(path, data)
 end
@@ -590,12 +599,16 @@ function Project_Config.Register_Project(project_root, metadata)
 		return false, global_error
 	end
 
-	local now = os.time() + (((uv.hrtime and uv.hrtime() or os.clock() * 1000000000) % 1000000) / 1000000)
-	local latest_opened = 0
+	local now = os.time()
+	local latest_order = tonumber(global.last_open_order) or 0
 	for _, item in ipairs(global.projects or {}) do
-		if type(item) == "table" then latest_opened = math.max(latest_opened, tonumber(item.last_opened) or 0) end
+		if type(item) == "table" then
+			latest_order = math.max(latest_order, tonumber(item.last_open_order) or 0)
+		end
 	end
-	if now <= latest_opened then now = latest_opened + 0.000001 end
+	-- A durable sequence number gives strict recency ordering even when several
+	-- projects are opened in the same second or the system clock moves backward.
+	local next_open_order = latest_order + 1
 	local entry = nil
 	local projects = {}
 	for _, item in ipairs(global.projects or {}) do
@@ -617,6 +630,7 @@ function Project_Config.Register_Project(project_root, metadata)
 	entry.manager = metadata.manager or project.manager or "native"
 	entry.created_at = project.created_at or entry.created_at or now
 	entry.last_opened = now
+	entry.last_open_order = next_open_order
 	projects[#projects + 1] = entry
 
 	table.sort(projects, function(a, b)
@@ -625,6 +639,7 @@ function Project_Config.Register_Project(project_root, metadata)
 
 	global.projects = projects
 	global.last_project = project_root
+	global.last_open_order = next_open_order
 	return Project_Config.Save_Global(global)
 end
 
@@ -657,7 +672,13 @@ function Project_Config.Get_Last_Project()
 	local latest
 	for _, entry in ipairs(global.projects or {}) do
 		if type(entry) == "table" and Project_Config.Exists(entry.path) then
-			if not latest or (entry.last_opened or 0) > (latest.last_opened or 0) then latest = entry end
+			local entry_order = tonumber(entry.last_open_order) or 0
+			local latest_order = latest and (tonumber(latest.last_open_order) or 0) or -1
+			local entry_time = tonumber(entry.last_opened) or 0
+			local latest_time = latest and (tonumber(latest.last_opened) or 0) or -1
+			if not latest or entry_order > latest_order or (entry_order == latest_order and entry_time > latest_time) then
+				latest = entry
+			end
 		end
 	end
 	return latest and latest.path or nil
@@ -683,6 +704,7 @@ function Project_Config.List_Projects(project_directory)
 			created_at = project.created_at,
 			added_at = type(registry_entry) == "table" and registry_entry.added_at or nil,
 			last_opened = type(registry_entry) == "table" and registry_entry.last_opened or nil,
+			last_open_order = type(registry_entry) == "table" and registry_entry.last_open_order or nil,
 		}
 	end
 
@@ -706,9 +728,16 @@ function Project_Config.List_Projects(project_directory)
 
 	local projects = {}
 	for _, entry in pairs(found) do projects[#projects + 1] = entry end
+	local last_project = Normalize_Project_Root(global.last_project)
 	table.sort(projects, function(a, b)
+		-- The sequence is the durable ordering key. Wall-clock timestamps remain
+		-- useful for display but can tie or move backward.
+		local ao, bo = tonumber(a.last_open_order) or 0, tonumber(b.last_open_order) or 0
+		if ao ~= bo then return ao > bo end
 		local at, bt = tonumber(a.last_opened) or 0, tonumber(b.last_opened) or 0
 		if at ~= bt then return at > bt end
+		local a_is_last, b_is_last = a.path == last_project, b.path == last_project
+		if a_is_last ~= b_is_last then return a_is_last end
 		local an, bn = (a.name or ""):lower(), (b.name or ""):lower()
 		if an ~= bn then return an < bn end
 		return a.path < b.path

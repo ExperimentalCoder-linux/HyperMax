@@ -76,6 +76,7 @@ HyperMax maps normal-mode shortcuts under `<leader>+`. The plus sign is part of 
 | `<leader>++` | Open HyperMax menu | Opens a menu with project, settings, layout, and last-project actions. |
 | `<leader>+p` or `<D-p>` | List projects | Browses registered projects from the global index and recovers projects found directly under `project_dir`. |
 | `<leader>+s` | Settings | Opens the interactive settings menu. |
+| `<leader>+T` | Tutorials | Opens the independent Essentials and Advanced tutorial tracks. |
 | `<leader>+l` | Load layout | Selects a saved layout and applies it to a target project directory. |
 | `<leader>+L` | Save layout | Captures the current working directory into an editable temporary JSON draft. |
 | `<leader>+o` or `<D-o>` | Open last project | Opens the most recently registered/opened HyperMax project. |
@@ -97,6 +98,7 @@ Mappings are registered in normal mode and are silent. If one conflicts with you
 | `:HyperMaxScrape [directory]` | Remove project metadata while retaining a backup. |
 | `:HyperMaxConfig` | Print the current HyperMax configuration. |
 | `:HyperMaxSettings` | Open the interactive settings menu. |
+| `:HyperMaxTutorial` | Open the Essentials and Advanced tutorial selector. |
 
 Project conversion/undo/scrape commands accept an optional directory argument and default to the current working directory. The remaining commands use interactive prompts or editor buffers.
 
@@ -342,7 +344,7 @@ Use `<leader>+S` or `:HyperMaxSavePoint` to create a hard save point. Use `<lead
 
 `diagnostics.lua` gathers current diagnostics only from named buffers whose paths are inside the selected project root. It converts Neovim's zero-based positions to quickfix's one-based positions, sorts the entries and opens the project-scoped list. It does not attempt to run compilers or language servers; diagnostics must already have been published by Neovim clients.
 
-The project index keeps `last_opened` metadata so project selection is recency-first. Opening the project dashboard refreshes this timestamp, which means projects opened through the startup path are included in recent-project ordering too.
+The global project index keeps `last_opened` as a real wall-clock timestamp for display and a monotonic `last_open_order` sequence for ordering. The sequence remains reliable when multiple projects are opened in the same second or the system clock moves backward. Opening the project dashboard updates both values, including when the project is opened through the startup path.
 
 ### Extending workspace actions
 
@@ -716,6 +718,16 @@ The generator can report tasks without knowing how the progress window is drawn.
 
 When submitting changes, include the reason for the change, affected modules, expected behavior, and how it was tested. For cross-module features, update this README and add tests for the registry, manifest, and user-facing behavior. Keep generated files and documentation aligned with the actual implementation.
 
+## Tutorials and onboarding
+
+HyperMax opens the Essentials welcome lesson once on first startup. The marker and lesson progress are stored in `stdpath("data")/hypermax/tutorial_progress.json`, outside the plugin checkout and outside project `.hmc` folders. The marker is a stable boolean rather than a plugin-version field, so updates do not replay first-run onboarding.
+
+Open the tutorial selector from **`<leader>++` → Tutorials**, `<leader>+T`, `:HyperMaxTutorial`, or the workspace home (`T`). Essentials and Advanced are separate tracks with independent lesson completion maps and independent reset actions. Lesson keys are stable IDs, which allows lesson progress to survive plugin updates when lesson titles or documentation text change.
+
+The Essentials track teaches projects, dashboard/file editing, tasks, runners, settings, and the everyday commands. Advanced contains focused lessons for layouts, Git, history/rollback, diagnostics, workspace settings, editor task pinning, and search/markers. In a lesson, `c` toggles completion, `n`/`p` navigate, and `b` returns to the track's lesson list.
+
+Pinned tasks are shown in the winbar of editor windows whose buffers belong to the project. The winbar is kept visible while scrolling. HyperMax appends to and later restores a literal existing winbar; it does not override a custom winbar expression.
+
 ## License
 
-No license file was present in the inspected repository at the time this README was written. Add a `LICENSE` file before presenting the project as open-source software with a specific license.
+HyperMax is released under the MIT License. See the repository's `LICENSE` file for the complete permission notice and disclaimer.

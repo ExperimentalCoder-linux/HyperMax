@@ -306,6 +306,7 @@ local function Actions(root)
 		{ label = "Save current project as layout", detail = "Capture structure and editable file contents", action = function() Project.Save_Layout() end },
 		{ label = "Apply a layout to a new project", detail = "Choose a reusable project template", action = function() Project.Load_Layout() end },
 		{ label = "Settings", detail = "Configure HyperMax defaults", action = function() Settings.Open() end },
+		{ label = "Tutorials", detail = "Open the independent Essentials and Advanced guides", action = function() require("hypermax.tutorial").Open_Menu(root) end },
 		{ label = "Switch buffer", detail = "Move between open files", action = Open_Buffers },
 		{ label = "Health checks", detail = "Run the plugin test suite", action = function() require("hypermax.keymaps").Run_Health_Check() end },
 	}
@@ -376,6 +377,7 @@ local function Render()
 	lines[#lines + 1] = "  ─────────────────────────────────────────────────────────────────────────────"
 	lines[#lines + 1] = "   l   Save layout                    L   Apply layout"
 	lines[#lines + 1] = "   s   Settings                       h   Health checks"
+	lines[#lines + 1] = "   T   Tutorials                      "
 	lines[#lines + 1] = ""
 	lines[#lines + 1] = "  SPACE  Command palette              q   Close workspace"
 	Set_Lines(lines)
@@ -425,6 +427,7 @@ function Workspace.Open(root)
 	Map("l", function() Close(); require("hypermax.project").Save_Layout() end, "Save current directory as a layout")
 	Map("L", function() Close(); require("hypermax.project").Load_Layout() end, "Apply a project layout")
 	Map("s", function() Close(); require("hypermax.settings").Open() end, "Open settings")
+	Map("T", function() require("hypermax.tutorial").Open_Menu(State.root) end, "Open Essentials and Advanced tutorials")
 	Map("h", function() Close(); require("hypermax.keymaps").Run_Health_Check() end, "Run health checks")
 	Render()
 	return true

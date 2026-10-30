@@ -22,6 +22,7 @@ CONTENTS                                                     *hypermax-contents*
 8. Layouts ..................................... |hypermax-layouts|
 9. Health Checks ............................... |hypermax-health|
 10. Troubleshooting ............................ |hypermax-troubleshooting|
+11. Tutorials .................................. |hypermax-tutorials|
 
 ==============================================================================
 1. INTRODUCTION                                           *hypermax-introduction*
@@ -226,6 +227,11 @@ HyperMax provides the following user commands.
                                                     *:HyperMaxSavePoint*
 :HyperMaxSavePoint
     Create a manual hard save point for the current HyperMax project.
+
+                                                    *:HyperMaxTutorial*
+:HyperMaxTutorial
+    Open the tutorial selector. Essentials and Advanced have independent
+    lesson lists and completion progress.
 
 ==============================================================================
 6. WORKSPACE AND FLOW                                          *hypermax-workspace*
@@ -443,6 +449,35 @@ COMMAND NOT FOUND
     Confirm that the plugin loaded successfully and that the command is
     registered by the installed version.
 
+===============================================================================
+11. TUTORIALS                                                   *hypermax-tutorials*
+===============================================================================
+
+HyperMax displays the Essentials welcome lesson once on the first startup
+following installation. The one-time marker is stored in
+stdpath("data")/hypermax/tutorial_progress.json, independently of the plugin
+version. Updating HyperMax therefore does not reopen first-run onboarding.
+
+Open the selector with :HyperMaxTutorial, <Leader>+T, or from the main menu:
+<Leader>++ -> Tutorials. The selector contains two independent tracks:
+
+ESSENTIALS
+    Projects, dashboard navigation, file editing, tasks, run configurations,
+    settings, and the everyday commands.
+
+ADVANCED
+    Reusable layouts, Git integration, save points and rollback, diagnostics,
+    workspace settings, pinned tasks in the editor, and project search.
+
+Within a lesson, press c to mark it complete or incomplete, n/p to navigate,
+and b to return to the lesson list. Press r in a track list to reset that
+track's progress only. Essentials and Advanced progress are stored separately.
+
+Pinned tasks
+    In :HyperMaxTasks, select a task and press P. Pinned tasks are displayed in
+the editor winbar for buffers belonging to that project and remain visible
+while scrolling. Press P again to unpin a task.
+
 ==============================================================================
                                                         *hypermax-about*
 ABOUT
@@ -451,4 +486,3 @@ HyperMax.nvim
 Repository: https://github.com/ExperimentalCoder-linux/HyperMax
 
  vim:tw=78:ts=8:ft=help:norl:
-

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 — Tutorials and editor task pinning
+
+- Added an MIT `LICENSE` and aligned the user/developer documentation with it.
+- Added first-run Essentials onboarding with a persistent, version-independent marker in the Neovim data directory.
+- Added separate Essentials and Advanced tutorial menus, lesson lists, completion state, and independent reset actions.
+- Added `:HyperMaxTutorial`, `<leader>+T`, and Tutorials entries in the main menu, workspace home, and command palette.
+- Added persistent editor winbar summaries for pinned project tasks; the display refreshes immediately on pin/unpin and is restored when no tasks remain.
+- Fixed recent-project ordering when timestamps are equal and accepted full window-position names such as `north-west`.
+- Corrected dashboard tests to assert absent entries as `nil`, not literal `false`.
+
 ## 0.5.0 — Workspace history, settings and UI refinement
 
 - Added hard save points, automatic soft saves after successful run configurations, optional Brotli compression, and a guarded rollback workflow with pre-restore safety snapshots.

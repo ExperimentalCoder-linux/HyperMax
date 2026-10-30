@@ -151,6 +151,11 @@ local function Write_Data(root, data)
 		pcall(os.remove, temporary)
 		return false, "Could not replace workspace data: " .. tostring(rename_error)
 	end
+	-- Pinned task state is also reflected in each editor window's winbar.
+	-- Refresh synchronously after the durable write so pin/unpin changes are
+	-- immediately visible without requiring a buffer switch or manual refresh.
+	local overlay_ok, Overlay = pcall(require, "hypermax.task_overlay")
+	if overlay_ok then pcall(Overlay.Refresh_Project, root) end
 	return true
 end
 

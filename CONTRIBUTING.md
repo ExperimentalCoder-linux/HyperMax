@@ -37,7 +37,7 @@ Include the Neovim version, operating system, relevant language and manager, exa
 
 Run configurations are shell commands stored as project data. They must never execute automatically on project open. Keep execution behind an explicit Run action, validate the selected working directory at both save and execution time, and reject symlink escapes outside the project root. Treat run configuration contents from untrusted repositories as untrusted input.
 
-Project recency is stored in the global registry. Opening the project dashboard updates `last_opened`; preserve the global registry boundary rather than placing machine-specific absolute project paths into `.hmc` project files.
+Project recency is stored in the global registry. Opening the project dashboard updates the display timestamp (`last_opened`) and monotonic ordering sequence (`last_open_order`); preserve the global registry boundary rather than placing machine-specific absolute project paths into `.hmc` project files.
 
 ## Test coverage
 

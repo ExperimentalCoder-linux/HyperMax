@@ -36,6 +36,9 @@ HyperMax is not claiming to replace every language-specific official tool or spe
 - Optional generated `README.md`, `.gitignore`, credits file, and common directories.
 - Keymaps and user commands for common actions.
 
+- First-run Essentials onboarding plus independent Essentials and Advanced tutorial tracks, with saved lesson progress.
+- Persistent pinned-task summaries in the editor winbar while you work in a project.
+
 ## Installation
 
 ### lazy.nvim
@@ -85,6 +88,7 @@ Mappings are created in normal mode and use your configured `mapleader`.
 | `<leader>++` | Open the HyperMax menu |
 | `<leader>+p` or `<D-p>` | Browse all registered HyperMax projects, including converted folders outside the configured project directory |
 | `<leader>+s` | Open settings |
+| `<leader>+T` | Open the independent Essentials and Advanced tutorials |
 | `<leader>+l` | Load/apply a saved layout |
 | `<leader>+L` | Save the current directory as a layout |
 | `<leader>+o` or `<D-o>` | Open the most recently registered/opened HyperMax project |
@@ -142,6 +146,7 @@ HyperMax stores a registry of project paths and recent-open information in its g
 | `:HyperMaxLayoutEdit` | Open an existing layout in the editable draft workflow |
 | `:HyperMaxConfig` | Print the current configuration |
 | `:HyperMaxSettings` | Open the settings menu |
+| `:HyperMaxTutorial` | Open the Essentials and Advanced tutorial menu |
 | `:HyperMaxWorkspace` | Open the central workspace home |
 | `:HyperMaxPalette` | Open the command palette |
 | `:HyperMaxTasks` | Open the current project's task board |
@@ -149,6 +154,21 @@ HyperMax stores a registry of project paths and recent-open information in its g
 | `:HyperMaxDiagnostics` | Show diagnostics for the current project in quickfix |
 | `:HyperMaxHistory` | Browse hard/soft save points and restore a selected state |
 | `:HyperMaxSavePoint` | Create a manual hard save point |
+
+## Tutorials and first-run onboarding
+
+On the first Neovim startup after HyperMax is installed, a welcome lesson from **Essentials** opens automatically. It introduces the everyday project workflow and the main commands. The first-run marker is saved in `stdpath("data")/hypermax/tutorial_progress.json`; it is not tied to the HyperMax version, so installing plugin updates will not show the introduction again.
+
+Open **`<leader>++` → Tutorials**, press `<leader>+T`, or run `:HyperMaxTutorial` to open the tutorial menu. It contains two separate tracks:
+
+- **Essentials** covers the dashboard, projects, editing/saving files, tasks, run configurations, settings, and common commands.
+- **Advanced** covers reusable layouts, Git, save points and rollback, diagnostics, project workspace settings, pinned tasks in the editor, and project search/markers.
+
+Each track has its own lessons and completion state. Mark a lesson complete with `c`; use `n` and `p` to move between lessons, and `b` to return to the lesson list. From a track list, `r` resets only that track. Resetting Advanced does not reset Essentials, and neither reset changes the one-time first-run marker.
+
+### Pinned tasks while editing
+
+In the task board (`:HyperMaxTasks`), select a task and press `P`. A summary of pinned tasks appears in the editor winbar for buffers belonging to that project and remains visible while you scroll. Press `P` again to unpin it. The winbar is restored when there are no pinned tasks; a custom winbar expression is left untouched.
 
 ## Workspace home, task flow and run configurations
 
@@ -262,6 +282,8 @@ The [full documentation](doc/README.md) has two parts:
 - **Developer guide:** architecture, module responsibilities, generation flow, registries, persistence, extension points, and design trade-offs.
 
 Contributions are welcome, especially tested language/manager definitions, example layouts, reproducible bug reports, and improvements to documentation. When reporting a problem, include your Neovim version, the selected language and manager, the steps to reproduce it, and any error message.
+
+HyperMax is released under the [MIT License](LICENSE).
 
 ## Design goal
 
