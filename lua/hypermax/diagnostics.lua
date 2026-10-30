@@ -1,18 +1,47 @@
 -- Project-scoped diagnostics collection and quickfix integration.
+
+---@class HyperMax.ProjectDiagnostic
+---@field filename string Absolute source filename.
+---@field lnum integer One-based line number.
+---@field col integer One-based column number.
+---@field text string Diagnostic message.
+---@field type "E"|"W"|"I" Quickfix diagnostic type.
+---@field end_lnum? integer One-based ending line number.
+---@field end_col? integer One-based ending column number.
+
+---@class HyperMax.DiagnosticsResult
+---@field root string Resolved project root.
+---@field items HyperMax.ProjectDiagnostic[] Sorted quickfix entries.
+---@field errors integer Number of errors.
+---@field warnings integer Number of warnings.
+---@field info integer Number of informational diagnostics.
+---@field hints integer Number of hints.
+---@field total integer Total number of diagnostics.
+
+---@class HyperMax.DiagnosticsOptions
+---@field buffers? integer[] Buffer handles to inspect instead of all buffers.
+
 local Diagnostics = {}
 
+---@param path string
+---@return string
 local function Normalize(path)
 	local absolute = vim.fn.fnamemodify(path, ":p"):gsub("\\", "/")
 	if absolute ~= "/" then absolute = absolute:gsub("/+$", "") end
 	return absolute
 end
 
+---@param root string
+---@param path string
+---@return boolean
 local function Is_Within(root, path)
 	if path == root then return true end
 	if root == "/" then return path:sub(1, 1) == "/" end
 	return path:sub(1, #root + 1) == root .. "/"
 end
 
+---@param root? string
+---@return string
 local function Resolve_Root(root)
 	if type(root) ~= "string" or root == "" then
 		local name = vim.api.nvim_buf_get_name(0)
@@ -33,9 +62,13 @@ local function Resolve_Root(root)
 	return root
 end
 
+---@param root? string Project directory or a path inside one.
+---@param options? HyperMax.DiagnosticsOptions
+---@return HyperMax.DiagnosticsResult
 function Diagnostics.Collect(root, options)
 	options = options or {}
 	root = Resolve_Root(root)
+	---@type HyperMax.DiagnosticsResult
 	local result = { root = root, items = {}, errors = 0, warnings = 0, info = 0, hints = 0, total = 0 }
 	if type(vim.diagnostic.get) ~= "function" then return result end
 
@@ -86,6 +119,10 @@ function Diagnostics.Collect(root, options)
 	return result
 end
 
+---@param root? string Project directory or a path inside one.
+---@param options? HyperMax.DiagnosticsOptions
+---@return boolean success
+---@return HyperMax.DiagnosticsResult result
 function Diagnostics.Open(root, options)
 	local result = Diagnostics.Collect(root, options)
 	-- Replace the prior list even when the project currently has no diagnostics;

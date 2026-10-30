@@ -1137,7 +1137,7 @@ function Project.List()
 	end
 
 	if #projects == 0 then
-		Notify("No HyperMax projects found. Convert a folder with :HyperMaxConvert or create a project first.", vim.log.levels.WARN)
+		Notify("No HyperMax projects found. Run :HyperMax project convert or create a project first.", vim.log.levels.WARN)
 		return
 	end
 
@@ -1171,7 +1171,7 @@ function Project.Open_Last()
 	end
 
 	if type(path) ~= "string" or path == "" then
-		Notify("No registered HyperMax project is available. Press <leader>+p to choose a project.", vim.log.levels.WARN)
+		Notify("No registered HyperMax project is available. Run :HyperMax project list to choose a project.", vim.log.levels.WARN)
 		return
 	end
 

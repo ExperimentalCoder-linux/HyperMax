@@ -308,7 +308,7 @@ local function Actions(root)
 		{ label = "Settings", detail = "Configure HyperMax defaults", action = function() Settings.Open() end },
 		{ label = "Tutorials", detail = "Open the independent Essentials and Advanced guides", action = function() require("hypermax.tutorial").Open_Menu(root) end },
 		{ label = "Switch buffer", detail = "Move between open files", action = Open_Buffers },
-		{ label = "Health checks", detail = "Run the plugin test suite", action = function() require("hypermax.keymaps").Run_Health_Check() end },
+		{ label = "Health checks", detail = "Check HyperMax installation, settings and dependencies", action = function() vim.cmd("checkhealth hypermax") end },
 	}
 end
 

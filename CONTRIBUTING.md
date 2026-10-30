@@ -7,14 +7,22 @@ Thanks for helping improve HyperMax. Reliability and preserving existing user da
 1. Describe the user-visible problem and the expected behavior.
 2. Keep changes focused; separate refactors from behavior changes where practical.
 3. Add regression tests for bugs and tests for new behavior.
-4. Run the complete test suite:
+4. Run the Busted unit specifications and the Neovim integration suite:
    ```sh
+   busted --verbose spec
    nvim --headless -u NONE -c "set rtp+=." -c "luafile tests/run.lua"
    ```
-5. Inspect generated files and exercise failure cases, not just the happy path.
-6. Update `README.md`, `doc/README.md`, and `doc/hypermax.txt` when commands, configuration, or workflows change.
-7. Keep state project-local when it belongs to one project; never leak `.hmc` data into reusable layouts.
-8. For external process launchers, make execution explicit, validate working directories and document trust expectations.
+   Install Busted with `luarocks --lua-version=5.1 install busted` when it is not already available.
+5. Check Lua 5.1 syntax and Lua quality:
+   ```sh
+   find lua plugin tests spec -name '*.lua' -print0 | xargs -0 -n1 luac5.1 -p
+   luacheck lua plugin spec --config .luacheckrc
+   ```
+   CI also runs Lua Language Server type checking against `.luarc.json`.
+6. Inspect generated files and exercise failure cases, not just the happy path.
+7. Update `README.md`, `doc/README.md`, and `doc/hypermax.txt` when commands, configuration, or workflows change.
+8. Keep state project-local when it belongs to one project; never leak `.hmc` data into reusable layouts.
+9. For external process launchers, make execution explicit, validate working directories and document trust expectations.
 
 ## Safety expectations
 
@@ -24,6 +32,10 @@ Thanks for helping improve HyperMax. Reliability and preserving existing user da
 - Report cleanup failures and the paths that remain.
 - Treat cancellation separately from failure.
 - Do not claim a language/manager combination is verified unless tests actually exercise it.
+
+## Versioning and public API changes
+
+Use Semantic Versioning for releases: patch releases fix compatible behavior, minor releases add backward-compatible functionality, and major releases indicate breaking public API changes. Keep `HyperMax.version` and `CHANGELOG.md` aligned when preparing a release, then push the matching `vX.Y.Z` tag. The release workflow verifies the tag/version/changelog match and creates the GitHub release automatically. When an API needs to be retired, mark it with a LuaCATS `---@deprecated` annotation and, when appropriate for the supported Neovim version, emit a `vim.deprecate()` warning. Do not silently remove a documented public API.
 
 ## Bug reports
 
@@ -41,8 +53,9 @@ Project recency is stored in the global registry. Opening the project dashboard 
 
 ## Test coverage
 
-The test runner includes project lifecycle/recency tests, flow persistence and validation tests, and workspace/flow UI smoke tests in addition to the existing layout, filesystem, Git and dashboard tests. The recommended verification command remains:
+Busted specifications cover isolated configuration and command-interface contracts. The headless Neovim integration runner covers project lifecycle/recency, flow persistence and validation, workspace/flow UI, layout, filesystem, Git, and dashboard behavior. Run both before submitting a change:
 
 ```sh
+busted --verbose spec
 nvim --headless -u NONE -c "set rtp+=." -c "luafile tests/run.lua"
 ```

@@ -38,6 +38,11 @@ Project_Config.global_path = project_test_root .. "/hypermax/config.json"
 -- =========================================================
 
 local test_files = {
+	"tests/test_runtime.lua",
+	"tests/test_config.lua",
+	"tests/test_commands.lua",
+	"tests/test_keymaps.lua",
+	"tests/test_health.lua",
 	"tests/test_file.lua",
 	"tests/test_connections.lua",
 	"tests/test_languages.lua",
@@ -64,7 +69,7 @@ local test_files = {
 
 print("")
 print("[INFO] HyperMax repository: " .. plugin_root)
-print("[INFO] Starting health checks...")
+print("[INFO] Starting test suite...")
 print("")
 
 for _, relative_path in ipairs(test_files) do
@@ -99,6 +104,6 @@ local success = Test.Finish()
 if success then
 	vim.cmd("qa!")
 else
-	-- A failed health check must return a non-zero exit code.
+	-- A failed test suite must return a non-zero exit code.
 	vim.cmd("cquit 1")
 end

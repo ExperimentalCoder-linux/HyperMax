@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased
+
+- Added Busted unit specifications for configuration validation and scoped command completion/dispatch, while keeping the real-Neovim integration suite for editor and filesystem behavior.
+- Expanded CI to install and run Busted, lint unit specifications, and parse every Lua source, test, and spec file with Lua 5.1.
+- Added focused LuaCATS contracts for project diagnostics, floating-window options, and runtime helper functions.
+- Completed native Vim help documentation for all global configuration options and documented the configuration precedence and automatic initialization lifecycle.
+- Updated contributor guidance to require both unit and integration tests and to use SemVer for public API changes.
+
+
+## 0.7.0 — Command API and mapping hardening
+
+- Consolidated global actions under one `:HyperMax` command with nested subcommands and completion for command groups and directory arguments.
+- Removed the previous per-action global command names; the two layout-draft commands remain buffer-local to their temporary draft buffer.
+- Kept command dispatch independent of feature-module imports so project, dashboard, Git, history, tutorial and workspace features load only when invoked.
+- Exposed namespaced `<Plug>(HyperMax-...)` mappings for major project and workspace actions.
+- Reduced automatic global mappings to one optional, conflict-safe `<leader>++` workspace mapping; users can disable it with `default_keymaps = false`.
+- Preserved existing user mappings instead of replacing them, including mappings that use HyperMax's `<Plug>` names.
+- Expanded LuaCATS annotations for command options, command specifications, keymaps and the public API.
+- Added regression tests for command dispatch, root and nested completion, directory argument completion, mapping ownership, default-map toggling and lazy feature imports.
+- Updated README, Vimdoc and developer documentation to describe the scoped command and mapping interfaces.
+
+## 0.6.1 — Runtime and configuration foundation
+
+- Separated `setup()` configuration from automatic runtime initialization; `setup()` now only validates and merges preferences.
+- Added an idempotent `initialize()` entry point and kept `plugin/hypermax.lua` small.
+- Deferred project, dashboard, workspace, Git, history, tutorial and settings modules until their features are invoked; pinned-task listeners activate only for HyperMax project buffers.
+- Added LuaCATS types for the global configuration and public API, plus `.luarc.json` for Lua 5.1 analysis.
+- Added configuration validation for every supported option, list element types, unknown keys, `vim.g.hypermax`, persisted settings and explicit overrides.
+- Added `lua/hypermax/health.lua` for Neovim's standard `:checkhealth hypermax` integration.
+- Added regression tests for configuration schema validation and the standard health report.
+- Updated user and developer documentation to describe the new configuration/initialization lifecycle and the real distinction between health checks and developer tests.
+
+
 ## 0.6.0 — Tutorials and editor task pinning
 
 - Added an MIT `LICENSE` and aligned the user/developer documentation with it.

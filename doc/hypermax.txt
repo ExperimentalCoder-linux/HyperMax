@@ -51,14 +51,12 @@ For lazy.nvim, add a plugin specification similar to:
     {
         "ExperimentalCoder-linux/HyperMax",
         name = "hypermax.nvim",
-        config = function()
-            require("hypermax").setup({
-                project_dir = "~/Code",
-                create_missing_dir = true,
-                open_after_create = false,
-                default_language = "c",
-            })
-        end,
+        opts = {
+            project_dir = "~/Code",
+            create_missing_dir = true,
+            open_after_create = false,
+            default_language = "c",
+        },
     }
 
 After installation, restart Neovim and verify that the plugin loads correctly.
@@ -67,191 +65,275 @@ After installation, restart Neovim and verify that the plugin loads correctly.
 3. CONFIGURATION                                         *hypermax-configuration*
 ==============================================================================
 
-HyperMax is configured through the setup() function.
+HyperMax initializes automatically through plugin/hypermax.lua. You do not
+need to call setup() to make the plugin work. The optional setup() function
+only validates and stores configuration; it does not register commands,
+keymaps, autocmds, or feature modules.
+
+Configuration is merged in this order, from lowest to highest priority:
+
+1. Built-in defaults.
+2. Previously saved global settings.
+3. The vim.g.hypermax table (or a function returning a table).
+4. The table passed to require("hypermax").setup({...}).
 
 Example:
 
-    require("hypermax").setup({
+    vim.g.hypermax = {
         project_dir = "~/Code",
-        create_missing_dir = true,
+        default_language = "cpp",
+    }
+
+    require("hypermax").setup({
         open_after_create = false,
-        default_language = "c",
+        default_keymaps = false,
     })
 
-The following options are available in this configuration example:
+Invalid fields and unknown option names are reported and ignored. Use
+:HyperMax settings to edit persisted global preferences, or :HyperMax config
+to inspect the active configuration.
 
+GLOBAL OPTIONS
+
+                                                        *hypermax-project-dir*
 project_dir
-    The starting directory used for project creation.
+    Parent directory for newly created projects. Default: ~/Projects.
 
+                                            *hypermax-create-missing-dir*
 create_missing_dir
-    Controls whether a missing project directory should be created.
+    Create project_dir when it does not exist. Default: true.
 
+                                             *hypermax-open-after-create*
 open_after_create
-    Controls whether the newly created project should be opened automatically.
+    Open a project after it has been created. Default: true.
 
+                                           *hypermax-default-language*
 default_language
-    Sets the default programming language selected for a new project.
+    Language registry ID selected by default. Default: cpp.
 
-Change these values to match your preferred development workflow.
+                                            *hypermax-default-manager*
+default_manager
+    Project-manager registry ID selected by default for the active language.
+    Default: native.
+
+                                             *hypermax-default-layout*
+default_layout
+    ID of the layout selected by default during project creation. An empty
+    string selects no preferred layout. Default: empty.
+
+                                       *hypermax-favourite-languages*
+favourite_languages
+    Array of language IDs displayed before other languages. Default: cpp, c,
+    lua, python, rust. The value must be a dense array containing only
+    non-empty strings.
+
+                                      *hypermax-remember-last-project*
+remember_last_project
+    Remember the most recently opened project. Default: true.
+
+                                           *hypermax-show-progress*
+show_progress
+    Show the project-creation progress window. Default: true.
+
+                                    *hypermax-show-command-output*
+show_command_output
+    Show output from project-generation commands. Default: true.
+
+                                  *hypermax-confirm-before-create*
+confirm_before_create
+    Ask for confirmation before creating a project. Default: true.
+
+                                          *hypermax-create-readme*
+create_readme
+    Generate a README.md file for new projects. Default: true.
+
+                                       *hypermax-create-gitignore*
+create_gitignore
+    Generate a .gitignore file for new projects. Default: true.
+
+                                        *hypermax-create-credits*
+create_credits
+    Generate a CREDITS.md file for new projects. Default: true.
+
+                           *hypermax-create-default-directories*
+create_default_directories
+    Create the directories supplied by the selected language/layout. Default:
+    true.
+
+                                  *hypermax-remember-last-language*
+remember_last_language
+    Remember the last selected language. Default: true.
+
+                                   *hypermax-remember-last-manager*
+remember_last_manager
+    Remember the last selected project manager. Default: true.
+
+                                         *hypermax-default-keymaps*
+default_keymaps
+    Install only the minimal <Leader>++ mapping to open the workspace. The
+    mapping is not installed if another mapping already owns that key. Set
+    this to false to disable HyperMax's default global mapping. Default: true.
+
+                                             *hypermax-last-project-path*
+last_project_path
+    Managed value containing the most recently opened project path. HyperMax
+    updates this when remember_last_project is enabled. It is included in
+    the configuration schema for persistence and migration; normally it does
+    not need to be set manually. Default: empty.
 
 ==============================================================================
 4. KEYBINDINGS                                             *hypermax-keybindings*
 ==============================================================================
 
-HyperMax uses the Neovim <Leader> key for its default keybindings.
+HyperMax exposes namespaced <Plug> mappings for all major actions. By default,
+it registers only one global mapping: <Leader>++ opens the workspace. The
+default is not installed if the user already owns that mapping. Set
+|g:hypermax| or setup() option default_keymaps to false to disable it.
 
-The default mappings below are registered by HyperMax's keymap setup.
+Example user mappings: >lua
+    vim.keymap.set("n", "<leader>hp", "<Plug>(HyperMax-CreateProject)")
+    vim.keymap.set("n", "<leader>ht", "<Plug>(HyperMax-Tasks)")
+    vim.keymap.set("n", "<leader>hh", "<Plug>(HyperMax-History)")
+<
 
-MAIN MENU
+Available mappings use the <Plug>(HyperMax-Name) form:
 
-    <Leader>++             Open the HyperMax menu.
+    Menu                 Open the workspace.
+    CreateProject        Open the project creation wizard.
+    ListProjects         List registered projects.
+    OpenLastProject      Open the most recently opened project.
+    QuickCreateProject   Create a project using preferred defaults.
+    SaveLayout           Capture the current directory as a layout.
+    EditLayout           Edit a saved layout.
+    LoadLayout           Apply a saved layout.
+    ListLayouts          Choose a layout for project creation.
+    Settings             Open settings.
+    Workspace            Open the workspace.
+    Palette              Open the command palette.
+    Tasks                Open the current project's task board.
+    Runs                 Open project run configurations.
+    Diagnostics          Show project-scoped diagnostics.
+    History              Browse save points and rollbacks.
+    SavePoint            Create a hard save point.
+    Tutorial             Open the tutorial menu.
+    Health               Run :checkhealth hypermax.
+    ConvertProject       Convert a directory into a HyperMax project.
+    UndoConversion       Undo folder conversion.
+    ScrapeProject        Remove project metadata with a backup.
+    ShowConfig           Print the active configuration.
 
-PROJECT MANAGEMENT
-
-    <Leader>+p             Open the registered HyperMax project list.
-
-    <D-p>                  Open the project list (requires terminal/GUI modifier support).
-
-    <D-o>                  Open the most recently opened or converted project.
-
-    <Leader>+n             Create a new project.
-
-    <Leader>+r             Create a project using the project wizard.
-
-WORKSPACE AND FLOW
-
-    <Leader>+m             Open the HyperMax workspace home.
-
-    <Leader>+<Space>       Open the HyperMax command palette.
-
-    <Leader>+t             Open the current project's task board.
-
-    <Leader>+w             Open named build/test/run configurations.
-
-    <Leader>+f             Find files in the current project.
-
-    <Leader>+/             Search text in the current project with ripgrep.
-
-    <Leader>+x             Open diagnostics scoped to the current project.
-
-    <Leader>+H             Browse save points and roll back a project.
-
-    <Leader>+S             Create a manual hard save point.
-
-LAYOUTS
-
-    <Leader>+l             Load a project layout.
-
-    <Leader>+L             Capture the current directory into an editable layout draft.
-
-    :HyperMaxLayoutEdit   Edit an existing saved layout in a temporary JSON buffer.
-
-SETTINGS
-
-    <Leader>+s             Open HyperMax settings.
-
-    The settings UI is nested by feature category. Each nested menu provides
-    a Back option. Workspace settings are project-local in .hmc/config.json.
-
-OTHER
-
-    <Leader>+o             Open the last registered HyperMax project.
-
-    <Leader>+c             Show HyperMax configuration.
-
-    <Leader>+h             Run the HyperMax health checks.
-
-NOTE
-
-    Keybindings depend on HyperMax's keymap setup being loaded. If a mapping
-    does not work, check that the plugin loaded successfully and that another
-    plugin has not overridden the mapping.
+The <Plug> mappings do not create a user's preferred key layout. Map only the
+actions you use. HyperMax checks for existing mappings before creating its
+optional default <Leader>++ mapping and never replaces a user-owned mapping.
+No other global feature shortcuts are installed automatically.
 
 ==============================================================================
 5. COMMANDS                                                  *hypermax-commands*
 ==============================================================================
 
-HyperMax provides the following user commands.
+HyperMax provides one scoped user command. Type :HyperMax followed by <Tab>
+for subcommand completion. Nested command groups also complete their own
+actions. Running :HyperMax without arguments opens the workspace.
 
-                                                    *:HyperMaxCreate*
-:HyperMaxCreate
+                                                    *:HyperMax*
+:HyperMax
+    Open the workspace.
+
+                                                    *:HyperMax-project*
+:HyperMax project create
     Start the project creation wizard.
 
-                                                    *:HyperMaxSaveLayout*
-:HyperMaxSaveLayout
-    Capture the current directory and open an editable layout JSON draft. Save
-    with :write or :HyperMaxLayoutSave; use :HyperMaxLayoutCancel to discard it.
+:HyperMax project list
+    List registered projects.
 
-                                                    *:HyperMaxLayoutEdit*
-:HyperMaxLayoutEdit
+:HyperMax project open-last
+    Open the most recently opened project.
+
+:HyperMax project quick-create
+    Create a project using preferred defaults.
+
+:HyperMax project convert [directory]
+    Add HyperMax metadata to an existing directory.
+
+:HyperMax project undo-conversion [directory]
+    Undo a folder conversion while preserving its files.
+
+:HyperMax project scrape [directory]
+    Remove HyperMax metadata after creating a backup.
+
+                                                    *:HyperMax-layout*
+:HyperMax layout save
+    Capture the current directory and open an editable layout JSON draft.
+
+:HyperMax layout edit
     Choose an existing saved layout and edit its JSON draft.
 
-                                                    *:HyperMaxConvert*
-:HyperMaxConvert [directory]
-    Add HyperMax project metadata to an existing directory and register it in
-    the global project index.
+:HyperMax layout load
+    Choose and apply a saved layout.
 
-                                                    *:HyperMaxConfig*
-:HyperMaxConfig
-    Display the HyperMax configuration.
+:HyperMax layout list
+    Choose a saved layout to use for project creation.
 
-                                                    *:HyperMaxHealthCheck*
-:HyperMaxHealthCheck
-    Run the HyperMax health checks.
+                                                    *:HyperMax-workspace*
+:HyperMax workspace [open]
+    Open the workspace home.
 
-                                                    *:HyperMaxWorkspace*
-:HyperMaxWorkspace
-    Open the workspace home with project status and quick actions.
+:HyperMax workspace palette
+    Open the action picker.
 
-                                                    *:HyperMaxPalette*
-:HyperMaxPalette
-    Open the action picker. A compatible UI selector can add fuzzy search.
-
-                                                    *:HyperMaxTasks*
-:HyperMaxTasks
+:HyperMax workspace tasks
     Open the current project's task board.
 
-                                                    *:HyperMaxRuns*
-:HyperMaxRuns
-    Create, edit, delete and run named project commands.
+:HyperMax workspace runs
+    Manage project run configurations.
 
-                                                    *:HyperMaxDiagnostics*
-:HyperMaxDiagnostics
-    Collect current Neovim diagnostics from the current project into quickfix.
+:HyperMax workspace diagnostics
+    Collect current project diagnostics into quickfix.
 
-                                                    *:HyperMaxHistory*
-:HyperMaxHistory
-    Open the project's save-point history. Select an item and press Enter to
-    restore it after confirmation. HyperMax creates a safety save first.
+                                                    *:HyperMax-history*
+:HyperMax history [open]
+    Browse save points and rollbacks.
 
-                                                    *:HyperMaxSavePoint*
-:HyperMaxSavePoint
-    Create a manual hard save point for the current HyperMax project.
+:HyperMax history save
+    Create a manual hard save point.
 
-                                                    *:HyperMaxTutorial*
-:HyperMaxTutorial
-    Open the tutorial selector. Essentials and Advanced have independent
-    lesson lists and completion progress.
+:HyperMax settings
+    Open HyperMax settings.
+
+:HyperMax config
+    Display the active configuration.
+
+:HyperMax tutorial
+    Open the Essentials and Advanced tutorial selector.
+
+:HyperMax health
+    Run :checkhealth hypermax.
+
+The layout-draft buffer also provides buffer-local :HyperMaxLayoutSave and
+:HyperMaxLayoutCancel commands to validate/save or discard the current draft.
+
+Global per-action commands from earlier releases have been consolidated under
+:HyperMax. Use the subcommand tree above for all global actions.
 
 ==============================================================================
 6. WORKSPACE AND FLOW                                          *hypermax-workspace*
 ==============================================================================
 
-Open the central workspace with <Leader>+m or :HyperMaxWorkspace. It shows
+Open the central workspace with :HyperMax workspace. It shows
 project identity, Git change count, open-task count, run configurations and
 current diagnostic counts. Its shortcuts open project switching, the project
 explorer, task board, run configurations, file finding, text search, TODO
 scanning, project-scoped diagnostics, Git status, layouts, settings and health
-checks. Press x (or <Leader>+x outside the workspace) to open diagnostics for
+checks. Use :HyperMax workspace diagnostics to open diagnostics for
 files under the project root in quickfix.
 
-The command palette is available with <Leader>+<Space> or :HyperMaxPalette.
+The command palette is available with :HyperMax workspace palette.
 It uses vim.ui.select, so compatible selector plugins can provide fuzzy
 selection and custom presentation.
 
 TASK BOARD
 
-    Open with <Leader>+t or :HyperMaxTasks. A task has a title, optional
+    Open with :HyperMax workspace tasks. A task has a title, optional
     details, priority (low, normal or high) and status (todo, doing or done).
 
     a       Add a task.
@@ -268,7 +350,7 @@ TASK BOARD
 
 RUN CONFIGURATIONS
 
-    Open with <Leader>+w or :HyperMaxRuns. Add named build, test, format or
+    Open with :HyperMax workspace runs. Add named build, test, format or
     launch commands. Each runner has a project-relative working directory.
     Press Enter or r to run the selected configuration in a terminal split.
 
@@ -284,8 +366,8 @@ auto_save_after_success is disabled in the project settings.
 
 SAVE HISTORY AND ROLLBACK
 
-    Use <Leader>+S or :HyperMaxSavePoint to create a hard save. Use <Leader>+H
-    or :HyperMaxHistory to open the save-history context window. Press s to
+    Use :HyperMax history save to create a hard save. Use :HyperMax history
+    to open the save-history context window. Press s to
     create a hard save, Enter to restore the selected point, d to delete it,
     r to refresh, and q or Escape to close the window. Restore operations are
     confirmed and create a safety save before changing files. Rollback is
@@ -322,12 +404,12 @@ CONTEXT WINDOW PLACEMENT
 
 SEARCH AND NAVIGATION
 
-    <Leader>+f opens a file picker. Ripgrep is used when installed; otherwise
+    The workspace file picker uses ripgrep when installed; otherwise
     HyperMax uses a bounded filesystem scan that skips common dependency and
     build directories.
 
-    <Leader>+/ prompts for a text query and sends matches to the quickfix list
-    using ripgrep. <Leader>+x collects current Neovim diagnostics from buffers
+    Project text search prompts for a query and sends matches to quickfix using
+    ripgrep. Project diagnostics collect current Neovim diagnostics from buffers
     inside the project into the quickfix list. Git status is available from
     the workspace home and opens
     in a terminal rooted at the project. The buffer switcher lists named,
@@ -342,25 +424,24 @@ menu and keybindings.
 
 PROJECT CREATION
 
-    Use <Leader>+n to create a new project using the configured options.
+    Use :HyperMax project create to start the project wizard.
 
-    Use <Leader>+r or :HyperMaxCreate to start the project wizard.
+    Use :HyperMax project quick-create to create a project using preferred defaults.
 
 PROJECT LIST
 
-    Use <Leader>+p to open the project list.
+    Use :HyperMax project list to open the project list.
 
 PROJECT REGISTRY
 
     A folder becomes a registered project when it is created through HyperMax
-    or converted using :HyperMaxConvert. The global registry is independent of
+    or converted using :HyperMax project convert. The global registry is independent of
     project_dir, so projects can be listed even when they live elsewhere.
 
 LAST PROJECT
 
-    Use <Leader>+o or <D-o> to open the most recently registered project.
-    Use <D-p> to browse all registered projects when your terminal or GUI
-    forwards the Super/Command modifier to Neovim.
+    Use :HyperMax project open-last to open the most recently registered project.
+    Use :HyperMax project list to browse all registered projects.
 
 The exact available project actions depend on the functions implemented by
 the installed version of HyperMax.nvim.
@@ -373,17 +454,17 @@ HyperMax supports saving and loading project layouts.
 
 SAVE A LAYOUT
 
-    Use <Leader>+L to save the current project as a layout.
+    Use :HyperMax layout save to save the current directory as a layout.
 
 LOAD A LAYOUT
 
-    Use <Leader>+l to load a saved layout.
+    Use :HyperMax layout load to load a saved layout.
 
 Layouts preserve project-relative directory paths and text file contents.
 Saving a layout opens a temporary JSON draft in the editor so you can create,
 remove, or edit entries before the template is persisted. Use :write or
 :HyperMaxLayoutSave to validate and save it; use :HyperMaxLayoutCancel to
-cancel the draft. The :HyperMaxLayoutEdit command opens an existing template.
+cancel the draft. The :HyperMax layout edit command opens an existing template.
 
 The .hmc project metadata, Git metadata, common build/cache directories,
 binary files, credential files, and files larger than 4 MiB are excluded from
@@ -396,21 +477,24 @@ and its file-tree snapshot remain inside each project's own .hmc directory.
 9. HEALTH CHECKS                                                *hypermax-health*
 ==============================================================================
 
-HyperMax includes a health-check command for checking its supported languages
-and project managers.
+HyperMax integrates with Neovim's standard health-check system. Run:
 
-Run the check using:
+    :checkhealth hypermax
 
-    :HyperMaxHealthCheck
+The report checks:
 
-Alternatively, use:
+- Neovim version compatibility and runtime initialization.
+- Global configuration types and the configured project directory.
+- Access to Neovim's data directory.
+- Optional external tools such as Git, ripgrep and Brotli.
+- Registered language and project-manager executables, including the selected
+  default language and manager.
 
-    <Leader>+h
+The scoped |:HyperMax health| subcommand invokes |:checkhealth| hypermax.
+Developer tests are separate from this health report. Run Busted unit specs
+with `busted --verbose spec`, then run the Neovim integration suite with:
 
-The health check runs the plugin's test runner to report test results.
-
-If a test fails, inspect the output to identify the failing test and its
-associated error.
+    nvim --headless -u NONE -c "set rtp+=." -c "luafile tests/run.lua"
 
 ==============================================================================
 10. TROUBLESHOOTING                                     *hypermax-troubleshooting*
@@ -426,6 +510,8 @@ PLUGIN NOT LOADING
         |   `-- hypermax/
         |       |-- init.lua
         |       |-- config.lua
+        |       |-- health.lua
+        |       |-- commands.lua
         |       |-- keymaps.lua
         |       |-- languages.lua
         |       |-- layouts.lua
@@ -458,8 +544,8 @@ following installation. The one-time marker is stored in
 stdpath("data")/hypermax/tutorial_progress.json, independently of the plugin
 version. Updating HyperMax therefore does not reopen first-run onboarding.
 
-Open the selector with :HyperMaxTutorial, <Leader>+T, or from the main menu:
-<Leader>++ -> Tutorials. The selector contains two independent tracks:
+Open the selector with :HyperMax tutorial or from the workspace home. The
+selector contains two independent tracks:
 
 ESSENTIALS
     Projects, dashboard navigation, file editing, tasks, run configurations,
@@ -474,7 +560,7 @@ and b to return to the lesson list. Press r in a track list to reset that
 track's progress only. Essentials and Advanced progress are stored separately.
 
 Pinned tasks
-    In :HyperMaxTasks, select a task and press P. Pinned tasks are displayed in
+    In :HyperMax workspace tasks, select a task and press P. Pinned tasks are displayed in
 the editor winbar for buffers belonging to that project and remain visible
 while scrolling. Press P again to unpin a task.
 

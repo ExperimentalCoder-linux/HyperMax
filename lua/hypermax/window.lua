@@ -1,6 +1,16 @@
 -- Shared placement logic for HyperMax context windows.
+
+---@class HyperMax.WindowOptions
+---@field position? string Preferred context-window position.
+---@field border? string Window border style.
+---@field title? string Window title.
+---@field title_pos? string Window title alignment.
+---@field enter? boolean Whether to enter the floating window.
+
 local Window = {}
 
+---@param root? string
+---@return string|nil
 local function Resolve_Root(root)
 	if type(root) == "string" and root ~= "" then
 		return vim.fn.fnamemodify(vim.fn.expand(root), ":p"):gsub("/+$", "")
@@ -25,6 +35,9 @@ local function Resolve_Root(root)
 	return nil
 end
 
+---@param root? string
+---@param fallback? string
+---@return string
 function Window.Get_Position(root, fallback)
 	local Project_Config = require("hypermax.project_config")
 	local resolved = Resolve_Root(root)
@@ -53,6 +66,11 @@ function Window.Get_Position(root, fallback)
 	return allowed[position] and (position == "CENTER" and "center" or position) or "center"
 end
 
+---@param width number Requested window width.
+---@param height number Requested window height.
+---@param root? string Project root used to read window preferences.
+---@param options? HyperMax.WindowOptions
+---@return table window_config
 function Window.Get_Config(width, height, root, options)
 	options = options or {}
 	local columns = math.max(1, vim.o.columns)
@@ -95,6 +113,13 @@ function Window.Get_Config(width, height, root, options)
 	}
 end
 
+---@param buffer integer Buffer to display.
+---@param title? string Window title.
+---@param width number Requested window width.
+---@param height number Requested window height.
+---@param root? string Project root used to read window preferences.
+---@param options? HyperMax.WindowOptions
+---@return integer window Window handle.
 function Window.Open_Float(buffer, title, width, height, root, options)
 	options = options or {}
 	local config = Window.Get_Config(width, height, root, {

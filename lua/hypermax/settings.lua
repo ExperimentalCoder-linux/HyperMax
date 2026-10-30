@@ -18,6 +18,7 @@ local Boolean_Settings = {
 	create_default_directories = "Generate default directories",
 	remember_last_language = "Remember last language",
 	remember_last_manager = "Remember last manager",
+	default_keymaps = "Install the default workspace keymap",
 }
 
 local CONTEXT_POSITIONS = { "center", "N", "NE", "E", "SE", "S", "SW", "W", "NW", "NS", "EW" }
@@ -64,8 +65,16 @@ local function Save_Project(root, key, value)
 end
 
 local function Save_Global(key, value)
-	Config.set(key, value)
+	local ok, err = Config.set(key, value)
+	if not ok then
+		Notify("Could not save global setting '" .. key .. "': " .. tostring(err), vim.log.levels.ERROR)
+		return false
+	end
+	if key == "default_keymaps" then
+		require("hypermax.keymaps").Refresh_Default_Mapping()
+	end
 	Notify("Saved global setting: " .. key)
+	return true
 end
 
 local function Edit_Boolean(key, label)
@@ -309,6 +318,7 @@ local function Open_Category(root, category)
 		["Interface"] = {
 			{ label = "Show project-creation progress", key = "show_progress", scope = "global" },
 			{ label = "Show command output", key = "show_command_output", scope = "global" },
+			{ label = "Install default <leader>++ mapping", key = "default_keymaps", scope = "global" },
 		},
 		["Utilities"] = {
 			{ label = "Open HyperMax workspace", requires_project = true, action = function() require("hypermax.workspace").Open(root) end },
