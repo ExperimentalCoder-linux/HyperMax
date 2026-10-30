@@ -484,7 +484,7 @@ The following is a practical overview of currently exposed helpers. Check the so
 
 - `setup(options)` — initialise configuration, commands, and keymaps.
 - `get_config()` — returns the active options table.
-- `get_version()` — returns the plugin version (`0.4.0` in this codebase).
+- `get_version()` — returns the plugin version (`0.4.1` in this codebase).
 - `create_project()` — starts project creation with current options.
 - `save_layout()` — saves the current directory as a layout.
 - `open_settings()` — opens the settings UI.

@@ -122,12 +122,13 @@ Test.Run("Converted projects register globally even outside project_dir", functi
 	vim.fn.mkdir(unrelated_directory, "p")
 	local indexed = Config.List_Projects(unrelated_directory)
 	Test.Type("table", indexed)
+	local expected_root = vim.fn.fnamemodify(root, ":p"):gsub("/+$", "")
 	local found = false
 	for _, project in ipairs(indexed) do
-		if project.path == vim.fn.fnamemodify(root, ":p") then found = true end
+		if project.path == expected_root then found = true end
 	end
 	Test.True(found, "Converted project was not discoverable through the global index")
-	Test.Equal(vim.fn.fnamemodify(root, ":p"), Config.Get_Last_Project())
+	Test.Equal(expected_root, Config.Get_Last_Project())
 	local loaded = assert(Config.Load(root))
 	Test.Equal("folder_conversion", loaded.basics.conversion.kind)
 	Test.True(loaded.basics.project.id ~= nil, "Project metadata should contain a stable project ID")
@@ -175,10 +176,10 @@ Test.Run("Project capture excludes .hmc and .git but keeps dotfiles and paths", 
 	local loaded = assert(Config.Load(root))
 	local paths, contents = {}, {}
 	for _, entry in ipairs(loaded.layout.entries) do paths[entry.path] = true; contents[entry.path] = entry.content end
-	Test.False(paths[".hmc"], ".hmc itself must not be captured")
-	Test.False(paths[".hmc/secret.json"], ".hmc contents must not be captured")
-	Test.False(paths[".git"], ".git itself must not be captured")
-	Test.False(paths[".git/config"], ".git contents must not be captured")
+	Test.False(paths[".hmc"] == true, ".hmc itself must not be captured")
+	Test.False(paths[".hmc/secret.json"] == true, ".hmc contents must not be captured")
+	Test.False(paths[".git"] == true, ".git itself must not be captured")
+	Test.False(paths[".git/config"] == true, ".git contents must not be captured")
 	Test.False(contents[".env"] ~= nil, "Environment secrets must not be captured")
 	Test.False(contents["id_ed25519"] ~= nil, "Private keys must not be captured")
 	Test.Equal("TOKEN=example\n", contents[".env.example"])

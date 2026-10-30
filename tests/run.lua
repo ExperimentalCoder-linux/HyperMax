@@ -25,6 +25,14 @@ vim.fn.chdir(plugin_root)
 
 local Test = require("tests.testlib")
 
+-- The test suite creates and opens temporary projects. Keep all registry
+-- writes in a temporary directory so running tests cannot alter a developer's
+-- real HyperMax project list or last-opened project.
+local Project_Config = require("hypermax.project_config")
+local original_project_global_path = Project_Config.global_path
+local project_test_root = vim.fn.fnamemodify(vim.fn.tempname(), ":p")
+Project_Config.global_path = project_test_root .. "/hypermax/config.json"
+
 -- =========================================================
 -- TEST SUITES
 -- =========================================================
@@ -72,6 +80,10 @@ for _, relative_path in ipairs(test_files) do
 		end
 	end
 end
+
+-- Restore the caller's registry setting and remove the temporary test index.
+Project_Config.global_path = original_project_global_path
+pcall(vim.fn.delete, project_test_root, "rf")
 
 -- =========================================================
 -- FINAL RESULT AND PROCESS EXIT CODE

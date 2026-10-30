@@ -14,6 +14,13 @@ local Passed = 0
 local Failed = 0
 local Failures = {}
 
+-- Keep dashboard/project metadata tests isolated from the user's real global
+-- project registry, and restore the original path after this file completes.
+local Project_Config = require("hypermax.project_config")
+local original_global_path = Project_Config.global_path
+local test_global_root = vim.fn.fnamemodify(vim.fn.tempname(), ":p")
+Project_Config.global_path = test_global_root .. "/hypermax/config.json"
+
 local function Test(Name, Callback)
 	local ok, err = xpcall(Callback, debug.traceback)
 
@@ -223,10 +230,6 @@ Test("Project metadata: basics.json records the entry file and main function", f
 	main_file:write("int main(void) { return 0; }\n")
 	main_file:close()
 
-	local Project_Config = require("hypermax.project_config")
-	local original_global_path = Project_Config.global_path
-	local registry_root = vim.fn.fnamemodify(vim.fn.tempname(), ":p")
-	Project_Config.global_path = registry_root .. "/hypermax/config.json"
 	local ok, result = Project_Config.Create(Root, {
 		name = "EntryPointTest",
 		language = "c",
@@ -241,8 +244,7 @@ Test("Project metadata: basics.json records the entry file and main function", f
 	Assert(loaded.basics.project.entry_point.file == "src/main.c", "basics.json should record the entry file")
 	Assert(loaded.basics.project.entry_point["function"] == "main", "basics.json should record the main function")
 
-	Project_Config.global_path = original_global_path
-	Remove_Test_Directory(registry_root)
+	-- The shared test registry is cleaned once at file exit.
 	Remove_Test_Directory(Root)
 end)
 

@@ -8,7 +8,7 @@ local Flow = require("hypermax.flow")
 
 local HyperMax = {}
 
-HyperMax.version = "0.4.0"
+HyperMax.version = "0.4.1"
 
 local function Register_Commands()
 	local commands = {

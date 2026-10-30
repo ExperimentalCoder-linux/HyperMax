@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1 — Test reliability fixes
+
+- Corrected project-index tests to compare canonical absolute paths consistently.
+- Corrected layout-exclusion assertions to distinguish an absent entry from the literal boolean `false`.
+- Fixed dashboard test cleanup scope so module state is restored safely.
+- Isolated test-run project registry writes in a temporary directory to protect the developer's real project index.
+
 ## 0.4.0 — Workspace and developer-flow upgrade
 
 - Added a central floating workspace home and discoverable command palette.
