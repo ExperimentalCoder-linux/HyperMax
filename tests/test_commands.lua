@@ -55,6 +55,12 @@ Test.Run("HyperMax command completion lists workspace actions", function()
 end)
 
 
+Test.Run("HyperMax command completion includes legacy shortcut actions", function()
+	local matches = Commands.complete("", "HyperMax workspace ", #"HyperMax workspace ")
+	Test.True(vim.tbl_contains(matches, "find-files"))
+	Test.True(vim.tbl_contains(matches, "search-text"))
+end)
+
 Test.Run("HyperMax command completion accepts the Ex command prefix", function()
 	local matches = Commands.complete("pro", ":HyperMax pro", #":HyperMax pro")
 	Test.True(vim.tbl_contains(matches, "project"))
@@ -102,6 +108,20 @@ Test.Run("HyperMax command dispatch calls the selected public action", function(
 	local ok = Commands.execute({ "project", "create" }, {})
 	Test.True(ok)
 	Test.True(called)
+end)
+
+Test.Run("HyperMax workspace commands dispatch file finding and text search", function()
+	local previous = package.loaded["hypermax.workspace"]
+	local called = {}
+	package.loaded["hypermax.workspace"] = {
+		Find_Files = function() called.find = true end,
+		Search_Text = function() called.search = true end,
+	}
+	Test.True(Commands.execute({ "workspace", "find-files" }, {}))
+	Test.True(Commands.execute({ "workspace", "search-text" }, {}))
+	Test.True(called.find)
+	Test.True(called.search)
+	package.loaded["hypermax.workspace"] = previous
 end)
 
 Test.Run("HyperMax command dispatch reports unexpected arguments", function()

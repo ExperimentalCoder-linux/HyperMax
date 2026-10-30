@@ -182,6 +182,14 @@ local function Build_Tree(api)
 					desc = "Show diagnostics scoped to the current project",
 					run = function() api.open_diagnostics() end,
 				},
+				["find-files"] = {
+					desc = "Find files in the current project",
+					run = function() require("hypermax.workspace").Find_Files() end,
+				},
+				["search-text"] = {
+					desc = "Search text in the current project",
+					run = function() require("hypermax.workspace").Search_Text() end,
+				},
 			},
 		},
 		history = {

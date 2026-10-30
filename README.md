@@ -80,15 +80,52 @@ By default, HyperMax uses `~/Projects` as its project parent directory. The defa
 
 ## Keymaps
 
-HyperMax exposes namespaced `<Plug>` mappings for common actions. It installs only one default global mapping, `<leader>++`, to open the workspace. The default is skipped when the user already owns that mapping; HyperMax does not create global shortcuts for individual features. Add only the actions you want to your own configuration:
+HyperMax exposes namespaced `<Plug>` mappings for common actions. By default, it installs only `<leader>++` to open the 0.7.x workspace. The default is skipped when the user already owns that mapping. The direct shortcuts from 0.6.0 are available as an opt-in compatibility setting; they are disabled by default and never replace an existing user mapping.
+
+Enable the old shortcut set in your plugin options or through **Settings → Interface → Enable legacy 0.6.0 global shortcuts**:
 
 ```lua
-vim.keymap.set("n", "<leader>hp", "<Plug>(HyperMax-CreateProject)")
-vim.keymap.set("n", "<leader>ht", "<Plug>(HyperMax-Tasks)")
-vim.keymap.set("n", "<leader>hh", "<Plug>(HyperMax-History)")
+{
+    "ExperimentalCoder-linux/HyperMax",
+    name = "hypermax.nvim",
+    lazy = false,
+    opts = {
+        legacy_shortcuts = true,
+    },
+}
 ```
 
-Set `default_keymaps = false` in HyperMax setup options to disable `<leader>++` as well. See [Commands](#commands) for the complete command interface and `:help hypermax-keybindings` for all `<Plug>` names. Available actions include Menu, CreateProject, ListProjects, OpenLastProject, QuickCreateProject, SaveLayout, EditLayout, LoadLayout, ListLayouts, Settings, Workspace, Palette, Tasks, Runs, Diagnostics, History, SavePoint, Tutorial, Health, ConvertProject, UndoConversion, ScrapeProject, and ShowConfig, each under `<Plug>(HyperMax-...)`.
+Set `legacy_shortcuts = false` to remove the compatibility shortcuts. The `<leader>++` workspace entry point remains independently controlled by `default_keymaps`. The 0.6.0 shortcut set is:
+
+| Shortcut | Action |
+|---|---|
+| `<leader>+T` | Tutorials |
+| `<leader>+p`, `<D-p>` | List projects |
+| `<D-o>`, `<leader>+o` | Open the last project |
+| `<leader>+n`, `<leader>+r` | Project creation wizard |
+| `<leader>+q` | Quick-create a project |
+| `<leader>+s` | Settings |
+| `<leader>+H` | Save history |
+| `<leader>+S` | Create a hard save point |
+| `<leader>+l`, `<leader>+L` | Load/save a layout |
+| `<leader>+c` | Show configuration |
+| `<leader>+m` | Open workspace |
+| `<leader>+t`, `<leader>+w` | Task board / run configurations |
+| `<leader>+f`, `<leader>+/` | Find files / search text |
+| `<leader>+x` | Project diagnostics |
+| `<leader>+<Space>` | Command palette |
+| `<leader>+h` | Run health check |
+| `<leader>+C`, `<leader>+u`, `<leader>+X` | Convert / undo conversion / remove metadata |
+
+For a fully custom setup, bind only the actions you want:
+
+```lua
+vim.keymap.set("n", "<leader>hp", "<Plug>(HyperMax-CreateProject)", { remap = true })
+vim.keymap.set("n", "<leader>ht", "<Plug>(HyperMax-Tasks)", { remap = true })
+vim.keymap.set("n", "<leader>hh", "<Plug>(HyperMax-History)", { remap = true })
+```
+
+See [Commands](#commands) for the complete command interface and `:help hypermax-keybindings` for the full `<Plug>` list. Available actions include Menu, CreateProject, ListProjects, OpenLastProject, QuickCreateProject, SaveLayout, EditLayout, LoadLayout, ListLayouts, Settings, Workspace, Palette, Tasks, Runs, Diagnostics, FindFiles, SearchText, History, SavePoint, Tutorial, Health, ConvertProject, UndoConversion, ScrapeProject, and ShowConfig.
 
 ## Dashboard file and Git controls
 
@@ -136,6 +173,8 @@ HyperMax uses one scoped command with nested subcommands. Type `:HyperMax ` and 
 | `:HyperMax workspace [open]` | Open the central workspace. |
 | `:HyperMax workspace palette` | Open the command palette. |
 | `:HyperMax workspace tasks` / `runs` / `diagnostics` | Open project task, run, or diagnostics tools. |
+| `:HyperMax workspace find-files` | Find a file in the current project. |
+| `:HyperMax workspace search-text` | Search project text and send matches to quickfix. |
 | `:HyperMax history [open]` | Browse project save points and rollbacks. |
 | `:HyperMax history save` | Create a manual hard save point. |
 | `:HyperMax settings` | Open HyperMax settings. |
@@ -238,7 +277,7 @@ hypermax.nvim/
 │   ├── project_config.lua     # Project metadata and global registry
 │   ├── settings.lua           # Interactive settings
 │   ├── config.lua              # Validated defaults and persisted preferences
-│   ├── keymaps.lua             # <Plug> mappings and minimal default shortcut
+│   ├── keymaps.lua             # <Plug> mappings, default and optional legacy shortcuts
 │   └── progress.lua            # Generation progress UI
 └── doc/README.md             # Full user and developer guide
 ```

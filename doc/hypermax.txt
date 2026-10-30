@@ -88,6 +88,7 @@ Example:
     require("hypermax").setup({
         open_after_create = false,
         default_keymaps = false,
+        legacy_shortcuts = true,
     })
 
 Invalid fields and unknown option names are reported and ignored. Use
@@ -175,6 +176,14 @@ default_keymaps
     mapping is not installed if another mapping already owns that key. Set
     this to false to disable HyperMax's default global mapping. Default: true.
 
+                                      *hypermax-legacy-shortcuts*
+legacy_shortcuts
+    Install the optional direct global shortcut set from HyperMax 0.6.0. The
+    shortcuts are disabled by default, are refreshed immediately when changed
+    through Settings, and are skipped when a user mapping already owns a key.
+    The 0.7.x <Leader>++ workspace mapping remains independently controlled
+    by default_keymaps. Default: false.
+
                                              *hypermax-last-project-path*
 last_project_path
     Managed value containing the most recently opened project path. HyperMax
@@ -192,14 +201,16 @@ default is not installed if the user already owns that mapping. Set
 |g:hypermax| or setup() option default_keymaps to false to disable it.
 
 Example user mappings: >lua
-    vim.keymap.set("n", "<leader>hp", "<Plug>(HyperMax-CreateProject)")
-    vim.keymap.set("n", "<leader>ht", "<Plug>(HyperMax-Tasks)")
-    vim.keymap.set("n", "<leader>hh", "<Plug>(HyperMax-History)")
+    vim.keymap.set("n", "<leader>hp", "<Plug>(HyperMax-CreateProject)", { remap = true })
+    vim.keymap.set("n", "<leader>ht", "<Plug>(HyperMax-Tasks)", { remap = true })
+    vim.keymap.set("n", "<leader>hh", "<Plug>(HyperMax-History)", { remap = true })
 <
 
 Available mappings use the <Plug>(HyperMax-Name) form:
 
     Menu                 Open the workspace.
+    FindFiles            Find files in the current project.
+    SearchText           Search text in the current project.
     CreateProject        Open the project creation wizard.
     ListProjects         List registered projects.
     OpenLastProject      Open the most recently opened project.
@@ -226,7 +237,8 @@ Available mappings use the <Plug>(HyperMax-Name) form:
 The <Plug> mappings do not create a user's preferred key layout. Map only the
 actions you use. HyperMax checks for existing mappings before creating its
 optional default <Leader>++ mapping and never replaces a user-owned mapping.
-No other global feature shortcuts are installed automatically.
+No other global feature shortcuts are installed by default. Set
+|legacy_shortcuts| to true to enable the 0.6.0 compatibility key set.
 
 ==============================================================================
 5. COMMANDS                                                  *hypermax-commands*
@@ -292,6 +304,12 @@ rest of the plugin still initializes and its <Plug> mappings remain available.
 
 :HyperMax workspace diagnostics
     Collect current project diagnostics into quickfix.
+
+:HyperMax workspace find-files
+    Find a file in the current project.
+
+:HyperMax workspace search-text
+    Search text in the current project and send matches to quickfix.
 
                                                     *:HyperMax-history*
 :HyperMax history [open]

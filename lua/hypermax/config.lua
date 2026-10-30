@@ -22,7 +22,8 @@
 ---@field create_default_directories boolean Create the layout's default directories.
 ---@field remember_last_language boolean Remember the previously selected language.
 ---@field remember_last_manager boolean Remember the previously selected manager.
----@field default_keymaps boolean Register only the minimal <leader>++ workspace mapping.
+---@field default_keymaps boolean Register the minimal <leader>++ workspace mapping.
+---@field legacy_shortcuts boolean Install the optional global shortcut set from HyperMax 0.6.0.
 
 ---@class (partial) HyperMax.ConfigOverrides : HyperMax.Config
 
@@ -69,6 +70,7 @@ Config.defaults = {
 	remember_last_language = true,
 	remember_last_manager = true,
 	default_keymaps = true,
+	legacy_shortcuts = false,
 }
 
 ---@type HyperMax.Config
@@ -121,6 +123,7 @@ local FIELD_SCHEMA = {
 	remember_last_language = { type = "boolean" },
 	remember_last_manager = { type = "boolean" },
 	default_keymaps = { type = "boolean" },
+	legacy_shortcuts = { type = "boolean" },
 }
 
 local function Notify(message, level)

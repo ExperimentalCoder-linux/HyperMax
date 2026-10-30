@@ -70,12 +70,12 @@ If your plugin manager uses a different setup convention, install/clone the repo
 
 ## Keymaps
 
-HyperMax exposes namespaced `<Plug>` mappings instead of installing many global shortcuts. By default, only `<leader>++` is registered to open the workspace, and it is skipped when the user already owns that mapping. Set `default_keymaps = false` to disable the default. Configure only the actions you want:
+HyperMax exposes namespaced `<Plug>` mappings and keeps global shortcuts minimal by default. Only `<leader>++` is registered to open the workspace, unless the user already owns that mapping. Set `default_keymaps = false` to disable it. Set `legacy_shortcuts = true` to install the optional direct global shortcuts from 0.6.0; the compatibility set is disabled by default, refreshes immediately when changed in Settings, and never replaces existing user mappings. The workspace entry point remains independently controlled by `default_keymaps`. Configure only the actions you want:
 
 ```lua
-vim.keymap.set("n", "<leader>hp", "<Plug>(HyperMax-CreateProject)")
-vim.keymap.set("n", "<leader>ht", "<Plug>(HyperMax-Tasks)")
-vim.keymap.set("n", "<leader>hh", "<Plug>(HyperMax-History)")
+vim.keymap.set("n", "<leader>hp", "<Plug>(HyperMax-CreateProject)", { remap = true })
+vim.keymap.set("n", "<leader>ht", "<Plug>(HyperMax-Tasks)", { remap = true })
+vim.keymap.set("n", "<leader>hh", "<Plug>(HyperMax-History)", { remap = true })
 ```
 
 See `:help hypermax-keybindings` for the full `<Plug>` mapping list.
@@ -150,7 +150,8 @@ The current settings menu exposes these options:
 | `remember_last_language` | `true` | Remembers the last language choice. |
 | `remember_last_manager` | `true` | Remembers the last manager choice. |
 | `remember_last_project` | `true` | Remembers the last project path for the Open Last Project action. |
-| `default_keymaps` | `true` | Installs only `<leader>++` for the workspace, unless that mapping already exists. |
+| `default_keymaps` | `true` | Installs `<leader>++` for the workspace, unless that mapping already exists. |
+| `legacy_shortcuts` | `false` | Installs the optional direct global shortcuts from 0.6.0. User-owned mappings take precedence. |
 
 The settings menu also has **Reset all settings to defaults**. Settings are stored as JSON; if the file is invalid, HyperMax warns and falls back to defaults and valid overrides.
 
@@ -281,7 +282,7 @@ hypermax.nvim/
 | `layouts.json` | Built-in defaults, credits template, language-specific command definitions, and layout data. | Lets structure and command metadata be edited without rewriting Lua control flow. |
 | `config.lua` | Typed defaults, option validation/merging, JSON persistence, getters/setters, and reset. | Keeps user configuration separate from runtime initialization and gives all modules one source of truth. |
 | `settings.lua` | `vim.ui.select`/`vim.ui.input` interface for changing preferences. | Keeps presentation and interactive editing out of configuration storage. |
-| `keymaps.lua` | Namespaced `<Plug>` mappings and one optional conflict-safe default entry point. | Exposes actions without imposing a large global keymap set or replacing user mappings. |
+| `keymaps.lua` | Namespaced `<Plug>` mappings, the optional default entry point, and opt-in 0.6.0 shortcut compatibility. | Keeps global mappings minimal by default and preserves user-owned mappings. |
 | `task_overlay.lua` | Project-aware editor winbar for pinned tasks. | Loads only after entering a HyperMax project and preserves a custom winbar. |
 | `progress.lua` | Floating progress window, progress bar, current task, and recent output. | Keeps progress rendering out of the generator's filesystem logic. |
 | `check_list.txt` | Development checklist. | Tracks planned work; it is not an executable test suite. |
@@ -290,7 +291,7 @@ hypermax.nvim/
 
 1. Neovim sources `plugin/hypermax.lua` from `runtimepath`.
 2. The runtime entry point checks its duplicate-load guard, requires only the lightweight public module, and calls `HyperMax.initialize()` after configuration callbacks have had an opportunity to run.
-3. `HyperMax.initialize()` validates configuration, registers the single scoped command through `commands.lua`, installs `<Plug>` mappings plus the optional default mapping through `keymaps.lua`, and installs deferred startup hooks. The initialization guard makes this idempotent.
+3. `HyperMax.initialize()` validates configuration, registers the single scoped command through `commands.lua`, installs `<Plug>` mappings plus the optional default/legacy mappings through `keymaps.lua`, and installs deferred startup hooks. The initialization guard makes this idempotent.
 4. Feature modules are not imported during command or mapping registration. The command tree calls the public API, whose feature functions require their implementation only when invoked; for example, `:HyperMax project create` loads `hypermax.project`, while `:HyperMax history` loads `hypermax.history` only when invoked.
 5. Pinned-task overlay hooks are activated when a buffer belonging to a `.hmc` project is entered. The dashboard and welcome tutorial are deferred until startup is complete.
 
@@ -304,6 +305,7 @@ local HyperMax = require("hypermax")
 HyperMax.setup({
     project_dir = "~/Projects",
     default_language = "cpp",
+    legacy_shortcuts = false, -- Set true to restore the 0.6.0 global shortcut set.
 })
 
 local config = HyperMax.get_config()
@@ -519,7 +521,7 @@ The following is a practical overview of currently exposed helpers. Check the so
 - `initialize()` — register runtime commands, mappings, and deferred startup hooks. Called automatically by `plugin/hypermax.lua`.
 - `is_initialized()` — returns whether automatic runtime initialization has completed.
 - `get_config()` — returns the active validated options table.
-- `get_version()` — returns the plugin version (`0.7.1` in this codebase).
+- `get_version()` — returns the plugin version (`0.8.0` in this codebase).
 - `create_project()` — starts project creation with current options.
 - `save_layout()` — saves the current directory as a layout.
 - `open_settings()` — opens the settings UI.

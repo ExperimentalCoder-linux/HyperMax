@@ -95,4 +95,90 @@ Test.Run("HyperMax keymap module does not eagerly load feature modules", functio
 	Test.Nil(package.loaded["hypermax.flow"])
 end)
 
+Test.Run("Legacy shortcut mappings are available but disabled by default", function()
+	local Config = require("hypermax.config")
+	local original_get = Config.get
+	Config.get = function(key)
+		if key == "legacy_shortcuts" then return false end
+		return original_get(key)
+	end
+	Keymaps.Refresh_Default_Mapping()
+	Test.Equal("", vim.fn.maparg("<leader>+T", "n"))
+	Test.True(#Keymaps.Get_Legacy_Mappings() >= 20)
+	Config.get = original_get
+end)
+
+Test.Run("Enabling legacy shortcuts installs the 0.6.0 mappings", function()
+	local Config = require("hypermax.config")
+	local original_get = Config.get
+	Config.get = function(key)
+		if key == "legacy_shortcuts" then return true end
+		return original_get(key)
+	end
+	Keymaps.Refresh_Default_Mapping()
+	local tutorial = vim.fn.maparg("<leader>+T", "n", false, true)
+	Test.Type("table", tutorial)
+	Test.Equal("<Plug>(HyperMax-Tutorial)", tutorial.rhs)
+	Test.True(tutorial.desc:find("HyperMax legacy:", 1, true) ~= nil)
+	local find_files = vim.fn.maparg("<leader>+f", "n", false, true)
+	Test.Equal("<Plug>(HyperMax-FindFiles)", find_files.rhs)
+	Config.get = original_get
+	Keymaps.Refresh_Default_Mapping()
+end)
+
+Test.Run("Disabling legacy shortcuts removes only HyperMax legacy mappings", function()
+	local Config = require("hypermax.config")
+	local original_get = Config.get
+	Config.get = function(key)
+		if key == "legacy_shortcuts" then return true end
+		return original_get(key)
+	end
+	Keymaps.Refresh_Default_Mapping()
+	Config.get = function(key)
+		if key == "legacy_shortcuts" then return false end
+		return original_get(key)
+	end
+	Keymaps.Refresh_Default_Mapping()
+	Test.Equal("", vim.fn.maparg("<leader>+T", "n"))
+	Config.get = original_get
+end)
+
+Test.Run("Legacy shortcuts preserve user-owned mappings", function()
+	local Config = require("hypermax.config")
+	local original_get = Config.get
+	local lhs = "<leader>+p"
+	vim.keymap.set("n", lhs, function() end, { desc = "User-owned legacy key" })
+	Config.get = function(key)
+		if key == "legacy_shortcuts" then return true end
+		return original_get(key)
+	end
+	Keymaps.Refresh_Default_Mapping()
+	local mapping = vim.fn.maparg(lhs, "n", false, true)
+	Test.Equal("User-owned legacy key", mapping.desc)
+	Config.get = function(key)
+		if key == "legacy_shortcuts" then return false end
+		return original_get(key)
+	end
+	Keymaps.Refresh_Default_Mapping()
+	local still_there = vim.fn.maparg(lhs, "n", false, true)
+	Test.Equal("User-owned legacy key", still_there.desc)
+	Config.get = original_get
+	pcall(vim.keymap.del, "n", lhs)
+end)
+
+Test.Run("Legacy shortcut setting does not override default-keymap setting", function()
+	local Config = require("hypermax.config")
+	local original_get = Config.get
+	Config.get = function(key)
+		if key == "default_keymaps" then return false end
+		if key == "legacy_shortcuts" then return true end
+		return original_get(key)
+	end
+	Keymaps.Refresh_Default_Mapping()
+	Test.Equal("", vim.fn.maparg(Keymaps.Get_Default_Menu_Mapping(), "n"))
+	Test.True(vim.fn.maparg("<leader>+T", "n") ~= "")
+	Config.get = original_get
+	Keymaps.Refresh_Default_Mapping()
+end)
+
 return true

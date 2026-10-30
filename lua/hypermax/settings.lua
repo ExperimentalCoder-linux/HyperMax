@@ -19,6 +19,7 @@ local Boolean_Settings = {
 	remember_last_language = "Remember last language",
 	remember_last_manager = "Remember last manager",
 	default_keymaps = "Install the default workspace keymap",
+	legacy_shortcuts = "Enable legacy 0.6.0 global shortcuts",
 }
 
 local CONTEXT_POSITIONS = { "center", "N", "NE", "E", "SE", "S", "SW", "W", "NW", "NS", "EW" }
@@ -70,7 +71,7 @@ local function Save_Global(key, value)
 		Notify("Could not save global setting '" .. key .. "': " .. tostring(err), vim.log.levels.ERROR)
 		return false
 	end
-	if key == "default_keymaps" then
+	if key == "default_keymaps" or key == "legacy_shortcuts" then
 		require("hypermax.keymaps").Refresh_Default_Mapping()
 	end
 	Notify("Saved global setting: " .. key)
@@ -319,6 +320,7 @@ local function Open_Category(root, category)
 			{ label = "Show project-creation progress", key = "show_progress", scope = "global" },
 			{ label = "Show command output", key = "show_command_output", scope = "global" },
 			{ label = "Install default <leader>++ mapping", key = "default_keymaps", scope = "global" },
+			{ label = "Enable legacy 0.6.0 global shortcuts", key = "legacy_shortcuts", scope = "global" },
 		},
 		["Utilities"] = {
 			{ label = "Open HyperMax workspace", requires_project = true, action = function() require("hypermax.workspace").Open(root) end },

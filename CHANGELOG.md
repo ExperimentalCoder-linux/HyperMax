@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.8.0 — Optional legacy shortcut compatibility
+
+- Kept the 0.7.1 command API, conflict-safe `<Plug>` mappings, lazy feature loading, command-registration safeguards, winbar protections, and release checks as the foundation.
+- Added the persisted global `legacy_shortcuts` setting, disabled by default, to opt into the direct global shortcuts used by HyperMax 0.6.0.
+- Added immediate shortcut refresh when the setting is changed from the Settings UI or `setup()` is called after initialization.
+- Kept the 0.7.x `<leader>++` workspace mapping as the main entry point; enabling legacy shortcuts adds the remaining 0.6.0 bindings.
+- Preserved existing user mappings: legacy bindings are installed only when their keys are free and are removed only when HyperMax still owns the exact mapping.
+- Added command-backed mappings for project file finding and text search, plus regression tests and updated keymap/configuration documentation.
+
 ## 0.7.1 — Runtime reliability and plugin compatibility
 
 - Guarded `:HyperMax` registration with both the Neovim user-command registry and `exists()` so an existing user or plugin command is never replaced; command registration can recover if the command is later removed.

@@ -51,6 +51,14 @@ describe("HyperMax scoped command interface", function()
 		assert.are.same({ "quick-create" }, nested)
 	end)
 
+	it("completes the file and text search workspace actions", function()
+		Commands.setup(Fake_API())
+		local matches = Commands.complete("", "HyperMax workspace ", #"HyperMax workspace ")
+
+		assert.is_true(vim.tbl_contains(matches, "find-files"))
+		assert.is_true(vim.tbl_contains(matches, "search-text"))
+	end)
+
 	it("delegates path completion to Neovim", function()
 		Commands.setup(Fake_API())
 		local matches = Commands.complete("s", "HyperMax project convert s", #"HyperMax project convert s")

@@ -40,7 +40,7 @@
 ---@field check_health fun() Run Neovim's HyperMax health check.
 local HyperMax = {}
 
-HyperMax.version = "0.7.1"
+HyperMax.version = "0.8.0"
 
 ---@type boolean
 local initialized = false

@@ -6,6 +6,14 @@ Test.Run("Configuration defaults satisfy their declared schema", function()
 	Test.True(valid, vim.inspect(issues))
 end)
 
+Test.Run("Configuration validates the legacy-shortcut option", function()
+	local valid = Config.validate({ legacy_shortcuts = true })
+	Test.True(valid)
+	local invalid = Config.validate({ legacy_shortcuts = "yes" })
+	Test.False(invalid)
+	Test.False(Config.defaults.legacy_shortcuts)
+end)
+
 Test.Run("Configuration validation rejects invalid scalar types", function()
 	local valid, issues = Config.validate({
 		project_dir = 42,
@@ -65,7 +73,9 @@ Test.Run("Configuration exposes schema metadata", function()
 	Test.Equal("boolean", schema.show_progress.type)
 	Test.Equal("table", schema.favourite_languages.type)
 	Test.Equal("boolean", schema.default_keymaps.type)
+	Test.Equal("boolean", schema.legacy_shortcuts.type)
 	Test.True(Config.defaults.default_keymaps)
+	Test.False(Config.defaults.legacy_shortcuts)
 end)
 
 return true
